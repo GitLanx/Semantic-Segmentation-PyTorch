@@ -73,13 +73,12 @@ def main():
     # 2. model
 
     model = FCN32s(n_classes=21)
-    start_epoch = 0
-    start_iteration = 0
+    start_epoch = 1
+
     if args.resume:
         checkpoint = torch.load(args.resume)
         model.load_state_dict(checkpoint['model_state_dict'])
         start_epoch = checkpoint['epoch']
-        start_iteration = checkpoint['iteration']
     else:
         vgg16 = models.vgg16(pretrained=True)
         model.copy_params_from_vgg16(vgg16)
@@ -109,7 +108,6 @@ def main():
         validate_epoch=10,
     )
     trainer.epoch = start_epoch
-    trainer.iteration = start_iteration
     trainer.train()
 
 
