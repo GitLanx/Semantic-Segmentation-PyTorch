@@ -72,7 +72,8 @@ class Trainer:
             with torch.no_grad():
                 score = self.model(data)
 
-            loss = F.cross_entropy(score, target)
+            loss = F.cross_entropy(score, target, reduction='sum')
+            loss /= len(data)
             loss_data = loss.data.item()
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while validating')
@@ -130,12 +131,12 @@ class Trainer:
     def train_epoch(self):
         self.model.train()
 
+        if self.epoch % self.validate_epoch == 0:
+            self.validate()
+
         for batch_index, (data, target) in tqdm.tqdm(
                 enumerate(self.train_loader), total=len(self.train_loader),
                 desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
-
-            if self.epoch % self.validate_epoch == 0:
-                self.validate()
 
             assert self.model.training
 
@@ -145,8 +146,8 @@ class Trainer:
             self.optim.zero_grad()
             score = self.model(data)
 
-            loss = F.cross_entropy(score, target)
-
+            loss = F.cross_entropy(score, target, reduction='sum')
+            loss /= len(data)
             loss_data = loss.data.item()
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while training')
@@ -158,7 +159,7 @@ class Trainer:
             lbl_true = target.data.cpu().numpy()
             acc, acc_cls, mean_iu, fwavacc = \
                 label_accuracy_score(
-                    lbl_true, lbl_pred, n_classes=self.n_classes)
+                    lbl_true, lbl_pred, self.n_classes)
             metrics.append((acc, acc_cls, mean_iu, fwavacc))
             metrics = np.mean(metrics, axis=0)
 
@@ -172,7 +173,7 @@ class Trainer:
             f.write(','.join(log) + '\n')
 
     def train(self):
-        for epoch in tqdm.trange(self.epoch, self.epochs,
+        for epoch in tqdm.trange(self.epoch, self.epochs + 1,
                                  desc='Train', ncols=80):
             self.epoch = epoch
             self.train_epoch()
