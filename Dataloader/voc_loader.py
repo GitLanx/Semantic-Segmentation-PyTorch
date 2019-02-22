@@ -68,7 +68,7 @@ class VOCLoader(data.Dataset):
         self.tf = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize(self.mean.tolist(), self.mean.tolist()),
+                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
             ]
         )
         self.untf = transforms.Compose(
@@ -97,7 +97,7 @@ class VOCLoader(data.Dataset):
         img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
         lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
         img = self.tf(img)
-        lbl = np.array(lbl, dtype=np.uint8)
+        lbl = np.array(lbl, dtype=np.int32)
         lbl[lbl == 255] = 0
 
         lbl = torch.from_numpy(lbl).long()
