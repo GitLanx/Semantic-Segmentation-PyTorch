@@ -21,7 +21,7 @@ def main():
     parser.add_argument(
         '--epochs', type=int, default=100, help='total epochs'
     )
-    parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
+    parser.add_argument('--batch_size', type=int, default=1, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=(96, 96), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='voc', help='choose which dataset to use')
     parser.add_argument('--train_root', type=str, default='E:/dataset/VOC2012/', help='path to train.txt')
