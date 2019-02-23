@@ -1,10 +1,10 @@
 import os
 import collections
-import torch
+from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PIL import Image
+import torch
 from torch.utils import data
 from torchvision import transforms
 
@@ -43,7 +43,7 @@ class VOCLoader(data.Dataset):
         root,
         split="train",
         transform=False,
-        img_size=512,
+        img_size=None,
         augmentations=None,
         test_mode=False,
     ):
@@ -54,7 +54,7 @@ class VOCLoader(data.Dataset):
         self.test_mode = test_mode
         self.n_classes = 21
         self.files = collections.defaultdict(list)
-        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.img_size = img_size
 
         if not self.test_mode:
             for split in ["train", "val"]:
@@ -87,6 +87,9 @@ class VOCLoader(data.Dataset):
         lbl_path = os.path.join(self.root, "SegmentationClass", img_name + ".png")
         img = Image.open(img_path)
         lbl = Image.open(lbl_path)
+        if self.img_size is not None:
+            img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
+            lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
         if self.augmentations is not None:
             img, lbl = self.augmentations(img, lbl)
         if self.is_transform:
@@ -94,12 +97,9 @@ class VOCLoader(data.Dataset):
         return img, lbl
 
     def transform(self, img, lbl):
-        img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
-        lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
         img = self.tf(img)
         lbl = np.array(lbl, dtype=np.int32)
-        lbl[lbl == 255] = 0
-
+        lbl[lbl == 255] = -1
         lbl = torch.from_numpy(lbl).long()
         return img, lbl
 
