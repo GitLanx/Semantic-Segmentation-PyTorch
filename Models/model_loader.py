@@ -19,5 +19,6 @@ def model_loader(model_name, n_classes, resume):
         if model_name in ['fcn32s', 'fcn8s']:
             vgg16 = models.vgg16(pretrained=True)
             model.copy_params_from_vgg16(vgg16)
+        checkpoint = None
 
     return model, start_epoch, checkpoint
