@@ -161,7 +161,7 @@ class Trainer:
             log = map(str, log)
             f.write(','.join(log) + '\n')
 
-        if self.epoch % self.validate_epoch == 0:
+        if self.epoch % self.val_epoch == 0:
             self.validate()
 
     def train(self):
