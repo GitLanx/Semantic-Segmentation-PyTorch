@@ -17,7 +17,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='FCN32', help='model to train for')
+    parser.add_argument('--model', type=str, default='FCN32s', help='model to train for')
     parser.add_argument('--epochs', type=int, default=100, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=1, help='number of batch size')
