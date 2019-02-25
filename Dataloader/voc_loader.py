@@ -80,7 +80,7 @@ class VOCLoader(data.Dataset):
         img_name = self.file_list[index]
         img_path = os.path.join(self.root, "JPEGImages", img_name + ".jpg")
         lbl_path = os.path.join(self.root, "SegmentationClass", img_name + ".png")
-        img = Image.open(img_path)
+        img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
         if self.img_size is not None:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
