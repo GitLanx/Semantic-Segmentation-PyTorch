@@ -73,6 +73,8 @@ class VOCLoader(data.Dataset):
             ]
         )
 
+        print(f"Found {len(self.file_list)} {split} images")
+
     def __len__(self):
         return len(self.file_list)
 
