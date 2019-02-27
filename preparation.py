@@ -7,14 +7,14 @@ lbl_root = '/home/ecust/lx/数据库A(200)/label_png'
 img = []
 lbl = []
 for root, _, files in os.walk(img_root):
-    for file in files:
-        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-            img.append(os.path.join(root.split(os.sep)[-1], file))
+    for filename in files:
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            img.append(os.path.join(root.split(os.sep)[-1], filename))
 
 for root, _, files in os.walk(lbl_root):
-    for file in files:
-        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-            lbl.append(os.path.join(root.split(os.sep)[-1], file))
+    for filename in files:
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            lbl.append(os.path.join(root.split(os.sep)[-1], filename))
 
 assert len(img) == len(lbl), 'numbers of images and labels are not equal'
 
