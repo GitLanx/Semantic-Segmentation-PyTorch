@@ -5,8 +5,8 @@ import yaml
 import argparse
 import datetime
 import torch
+from Dataloader import get_loader
 from torch.utils.data import DataLoader
-import torchvision.models as models
 from Models import model_loader
 from trainer import Trainer
 
@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=1, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=(96, 96), help='resize images to proper size')
-    parser.add_argument('--dataset_type', type=str, default='voc', help='choose which dataset to use')
+    parser.add_argument('--dataset_type', type=str, default='', help='choose which dataset to use')
     parser.add_argument('--train_root', type=str, default='E:/dataset/VOC2012/', help='path to train.txt')
     parser.add_argument('--val_root', type=str, help='path to val.txt')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
@@ -51,10 +51,11 @@ def main():
     # 1. dataset
 
     root = args.train_root
-    if args.dataset_type == '':
-        from Dataloader import BaseLoader as loader
-    elif args.dataset_type == 'voc':
-        from Dataloader import VOCLoader as loader
+    # if args.dataset_type == '':
+    #     from Dataloader import BaseLoader as loader
+    # elif args.dataset_type == 'voc':
+    #     from Dataloader import VOCLoader as loader
+    loader = get_loader(args.dataset_type)
 
     train_loader = DataLoader(
         loader(root, split='train', transform=True, img_size=args.img_size),

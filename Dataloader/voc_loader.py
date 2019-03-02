@@ -44,24 +44,19 @@ class VOCLoader(data.Dataset):
         split="train",
         transform=False,
         img_size=None,
-        augmentations=None,
-        test_mode=False,
+        augmentations=None
     ):
         self.root = root
         self.split = split
         self.is_transform = transform
         self.augmentations = augmentations
-        self.test_mode = test_mode
         self.n_classes = 21
         self.files = collections.defaultdict(list)
         self.img_size = img_size
 
-        if not self.test_mode:
-            for split in ["train", "val"]:
-                path = os.path.join(self.root, "ImageSets/Segmentation", split + ".txt")
-                with open(path, "r") as f:
-                    file_list = [file_name.rstrip() for file_name in f]
-                self.files[split] = file_list
+        path = os.path.join(self.root, "ImageSets/Segmentation", split + ".txt")
+        with open(path, "r") as f:
+            self.file_list = [file_name.rstrip() for file_name in f]
 
         self.mean = torch.tensor([0.485, 0.456, 0.406])
         self.std = torch.tensor([0.229, 0.224, 0.225])
@@ -78,14 +73,16 @@ class VOCLoader(data.Dataset):
             ]
         )
 
+        print(f"Found {len(self.file_list)} {split} images")
+
     def __len__(self):
-        return len(self.files[self.split])
+        return len(self.file_list)
 
     def __getitem__(self, index):
-        img_name = self.files[self.split][index]
+        img_name = self.file_list[index]
         img_path = os.path.join(self.root, "JPEGImages", img_name + ".jpg")
         lbl_path = os.path.join(self.root, "SegmentationClass", img_name + ".png")
-        img = Image.open(img_path)
+        img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
         if self.img_size is not None:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
