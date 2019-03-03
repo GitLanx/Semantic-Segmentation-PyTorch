@@ -3,7 +3,7 @@ import collections
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.io import loadmat
 import torch
 from torch.utils import data
 from torchvision import transforms
@@ -183,6 +183,62 @@ class VOCLoader(data.Dataset):
             plt.show()
         else:
             return rgb
+
+class SBDLoader(VOCLoader):
+    def __init__(
+        self,
+        root,
+        split='train',
+        transform=False,
+        img_size=None,
+        augmentations=None
+    ):
+        self.root = root
+        self.split = split
+        self.is_transform = transform
+        self.augmentations = augmentations
+        self.n_classes = 21
+        self.files = collections.defaultdict(list)
+        self.img_size = img_size
+
+        path = os.path.join(self.root, 'dataset', split + ".txt")
+        with open(path, "r") as f:
+            self.file_list = [file_name.rstrip() for file_name in f]
+
+        self.mean = torch.tensor([0.485, 0.456, 0.406])
+        self.std = torch.tensor([0.229, 0.224, 0.225])
+        self.tf = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
+            ]
+        )
+        self.untf = transforms.Compose(
+            [
+                transforms.Normalize((-self.mean / self.std).tolist(),
+                                     (1.0 / self.std).tolist()),
+            ]
+        )
+
+        print(f"Found {len(self.file_list)} {split} images")
+
+    def __getitem__(self, index):
+        img_name = self.file_list[index]
+        img_path = os.path.join(self.root, 'dataset/img', img_name + '.jpg')
+        lbl_path = os.path.join(self.root, 'dataset/cls', img_name + '.mat')
+
+        img = Image.open(img_path).convert('RGB')
+        lbl = loadmat(lbl_path)
+        lbl = lbl['GTcls'][0]['Segmentation'][0].astype(np.int32)
+        lbl = Image.fromarray(lbl)
+        if self.img_size is not None:
+            img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
+            lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
+        if self.augmentations is not None:
+            img, lbl = self.augmentations(img, lbl)
+        if self.is_transform:
+            img, lbl = self.transform(img, lbl)
+        return img, lbl
 
 # Leave code for debugging purposes
 # import ptsemseg.augmentations as aug
