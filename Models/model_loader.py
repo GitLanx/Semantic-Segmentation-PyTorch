@@ -1,4 +1,5 @@
 from .FCN import FCN32s, FCN8sAtOnce
+from .UNet import UNet
 import torch
 from torchvision import models
 
@@ -8,6 +9,8 @@ def model_loader(model_name, n_classes, resume):
         model = FCN32s(n_classes=n_classes)
     elif model_name == 'fcn8s':
         model = FCN8sAtOnce(n_classes=n_classes)
+    elif model_name == 'unet':
+        model = UNet(n_classes=n_classes)
     else:
         raise ValueError('Unsupported model')
     start_epoch = 1
