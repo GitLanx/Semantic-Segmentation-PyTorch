@@ -3,6 +3,7 @@ from .UNet import UNet
 import torch
 from torchvision import models
 
+VALID_MODEL = ['fcn32s', 'fcn8s', 'unet']
 
 def model_loader(model_name, n_classes, resume):
     if model_name == 'fcn32s':
@@ -12,7 +13,9 @@ def model_loader(model_name, n_classes, resume):
     elif model_name == 'unet':
         model = UNet(n_classes=n_classes)
     else:
-        raise ValueError('Unsupported model')
+        raise ValueError('Unsupported model, '
+                         'supported models as follows:\n{}'.format(', '.join(VALID_MODEL)))
+
     start_epoch = 1
     if resume:
         checkpoint = torch.load(resume)
