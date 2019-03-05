@@ -240,6 +240,62 @@ class SBDLoader(VOCLoader):
             img, lbl = self.transform(img, lbl)
         return img, lbl
 
+
+class VOC11Val(VOCLoader):
+    def __init__(
+        self,
+        root,
+        split='val',
+        transform=False,
+        img_size=None,
+        augmentations=None
+    ):
+        self.root = root
+        self.split = split
+        self.is_transform = transform
+        self.augmentations = augmentations
+        self.n_classes = 21
+        self.img_size = img_size
+
+        current_path = os.path.realpath(__file__)
+
+        path = os.path.join(current_path[:-13] + "seg11valid.txt")
+        with open(path, "r") as f:
+            self.file_list = [file_name.rstrip() for file_name in f]
+
+        self.mean = torch.tensor([0.485, 0.456, 0.406])
+        self.std = torch.tensor([0.229, 0.224, 0.225])
+        self.tf = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
+            ]
+        )
+        self.untf = transforms.Compose(
+            [
+                transforms.Normalize((-self.mean / self.std).tolist(),
+                                     (1.0 / self.std).tolist()),
+            ]
+        )
+
+        print(f"Found {len(self.file_list)} {split} images")
+
+    def __getitem__(self, index):
+        img_name = self.file_list[index]
+        img_path = os.path.join(self.root, "JPEGImages", img_name + ".jpg")
+        lbl_path = os.path.join(self.root, "SegmentationClass", img_name + ".png")
+        img = Image.open(img_path).convert('RGB')
+        lbl = Image.open(lbl_path)
+
+        if self.img_size is not None:
+            img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
+            lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
+        if self.augmentations is not None:
+            img, lbl = self.augmentations(img, lbl)
+        if self.is_transform:
+            img, lbl = self.transform(img, lbl)
+        return img, lbl
+
 # Leave code for debugging purposes
 # import ptsemseg.augmentations as aug
 if __name__ == '__main__':
