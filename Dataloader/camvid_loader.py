@@ -36,7 +36,7 @@ class CamVidLoader(data.Dataset):
         self.split = split
         self.is_transform = transform
         self.augmentations = augmentations
-        self.n_classes = 11
+        self.n_classes = 12
         self.files = collections.defaultdict(list)
         self.img_size = img_size
 
@@ -72,6 +72,8 @@ class CamVidLoader(data.Dataset):
             lbl_path = os.path.join(self.root, 'trainannot', img_name)
         elif self.split == 'val':
             lbl_path = os.path.join(self.root, 'valannot', img_name)
+        elif self.split == 'test':
+            lbl_path = os.path.join(self.root, 'testannot', img_name)
 
         img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
