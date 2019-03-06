@@ -181,9 +181,9 @@ class CityscapesLoader(data.Dataset):
         return lbl
 
     def encode_segmap(self, mask):
-        # Put all void classes to 255
+        # Put all void classes to -1
         for _voidc in self.void_classes:
-            mask[mask == _voidc] = 255
+            mask[mask == _voidc] = -1
         for _validc in self.valid_classes:
             mask[mask == _validc] = self.class_map[_validc]
         return mask
