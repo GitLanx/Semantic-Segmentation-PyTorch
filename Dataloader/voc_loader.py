@@ -109,7 +109,7 @@ class VOCLoader(data.Dataset):
         lbl = lbl.numpy()
         return img, lbl
 
-    def get_pascal_labels(self):
+    def get_label_colors(self):
         """Load the mapping that associates pascal classes with label colors
         Returns:
             np.ndarray with dimensions (21, 3)
@@ -151,7 +151,7 @@ class VOCLoader(data.Dataset):
         """
         mask = mask.astype(int)
         label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int16)
-        for ii, label in enumerate(self.get_pascal_labels()):
+        for ii, label in enumerate(self.get_label_colors()):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
@@ -166,7 +166,7 @@ class VOCLoader(data.Dataset):
         Returns:
             (np.ndarray, optional): the resulting decoded color image.
         """
-        label_colours = self.get_pascal_labels()
+        label_colours = self.get_label_colors()
         r = label_mask.copy()
         g = label_mask.copy()
         b = label_mask.copy()

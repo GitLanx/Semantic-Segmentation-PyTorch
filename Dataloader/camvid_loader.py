@@ -9,10 +9,6 @@ from torchvision import transforms
 
 
 class CamVidLoader(data.Dataset):
-    '''Adapted from:
-    https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/loader/pascal_voc_loader.py
-    https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/datasets/voc.py
-    '''
     class_names = np.array([
         'sky',
         'building',
@@ -20,11 +16,11 @@ class CamVidLoader(data.Dataset):
         'road',
         'pavement',
         'tree',
-        'Sign',
+        'sign',
         'fence',
         'vehicle',
         'pedestrian',
-        'bile',
+        'bicyclist',
         'void'
     ])
 
@@ -44,18 +40,18 @@ class CamVidLoader(data.Dataset):
         self.files = collections.defaultdict(list)
         self.img_size = img_size
 
-        path = os.path.join(self.root, split + ".txt")
+        path = os.path.join(self.root, self.split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
 
         # self.mean = torch.tensor([0.485, 0.456, 0.406])
         # self.std = torch.tensor([0.229, 0.224, 0.225])
-        # self.tf = transforms.Compose(
-        #     [
-        #         transforms.ToTensor(),
-        #         transforms.Normalize(self.mean.tolist(), self.std.tolist()),
-        #     ]
-        # )
+        self.tf = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                # transforms.Normalize(self.mean.tolist(), self.std.tolist()),
+            ]
+        )
         # self.untf = transforms.Compose(
         #     [
         #         transforms.Normalize((-self.mean / self.std).tolist(),
@@ -70,9 +66,13 @@ class CamVidLoader(data.Dataset):
 
     def __getitem__(self, index):
         img_name = self.file_list[index]
-        img_path = img_name.split()[0]
-        lbl_path = img_name.split()[1]
-        
+        img_name = img_name.split()[0].split('/')[-1]
+        img_path = os.path.join(self.root, self.split, img_name)
+        if self.split == 'train':
+            lbl_path = os.path.join(self.root, 'trainannot', img_name)
+        elif self.split == 'val':
+            lbl_path = os.path.join(self.root, 'valannot', img_name)
+
         img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
         if self.img_size is not None:
@@ -87,47 +87,38 @@ class CamVidLoader(data.Dataset):
     def transform(self, img, lbl):
         img = self.tf(img)
         lbl = np.array(lbl, dtype=np.int32)
-        lbl[lbl == 255] = -1
+        lbl[lbl == 11] = -1
         lbl = torch.from_numpy(lbl).long()
         return img, lbl
 
     def untransform(self, img, lbl):
-        img = self.untf(img)
+        # img = self.untf(img)
         img = img.numpy()
-        img = img.transpose(1, 2, 0)
+        # img = img.transpose(1, 2, 0)
         img = img * 255
         img = img.astype(np.uint8)
         lbl = lbl.numpy()
         return img, lbl
 
-    def get_pascal_labels(self):
+    def get_label_colors(self):
         """Load the mapping that associates pascal classes with label colors
         Returns:
             np.ndarray with dimensions (21, 3)
         """
         return np.asarray(
             [
-                [0, 0, 0],
-                [128, 0, 0],
-                [0, 128, 0],
-                [128, 128, 0],
-                [0, 0, 128],
-                [128, 0, 128],
-                [0, 128, 128],
                 [128, 128, 128],
-                [64, 0, 0],
-                [192, 0, 0],
-                [64, 128, 0],
-                [192, 128, 0],
-                [64, 0, 128],
-                [192, 0, 128],
-                [64, 128, 128],
+                [128, 0, 0],
+                [192, 192, 128],
+                [128, 64, 128],
+                [0, 0, 192],
+                [128, 128, 0],
                 [192, 128, 128],
-                [0, 64, 0],
-                [128, 64, 0],
-                [0, 192, 0],
-                [128, 192, 0],
-                [0, 64, 128],
+                [64, 64, 128],
+                [64, 0, 128],
+                [64, 64, 0],
+                [0, 128, 192],
+                [0, 0, 0],
             ]
         )
 
@@ -142,12 +133,12 @@ class CamVidLoader(data.Dataset):
         """
         mask = mask.astype(int)
         label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int16)
-        for ii, label in enumerate(self.get_pascal_labels()):
+        for ii, label in enumerate(self.get_label_colors()):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
 
-    def decode_segmap(self, label_mask, plot=False):
+    def decode_segmap(self, label_mask):
         """Decode segmentation class labels into a color image
         Args:
             label_mask (np.ndarray): an (M,N) array of integer values denoting
@@ -157,7 +148,7 @@ class CamVidLoader(data.Dataset):
         Returns:
             (np.ndarray, optional): the resulting decoded color image.
         """
-        label_colours = self.get_pascal_labels()
+        label_colours = self.get_label_colors()
         r = label_mask.copy()
         g = label_mask.copy()
         b = label_mask.copy()
@@ -169,11 +160,7 @@ class CamVidLoader(data.Dataset):
         rgb[:, :, 0] = r / 255.0
         rgb[:, :, 1] = g / 255.0
         rgb[:, :, 2] = b / 255.0
-        if plot:
-            plt.imshow(rgb)
-            plt.show()
-        else:
-            return rgb
+        return rgb
 
 # Leave code for debugging purposes
 # import ptsemseg.augmentations as aug
