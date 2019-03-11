@@ -36,7 +36,7 @@ class CamVidLoader(data.Dataset):
         self.split = split
         self.is_transform = transform
         self.augmentations = augmentations
-        self.n_classes = 12
+        self.n_classes = 11
         self.files = collections.defaultdict(list)
         self.img_size = img_size
 
