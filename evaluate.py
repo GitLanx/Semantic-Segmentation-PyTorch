@@ -13,10 +13,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='fcn32s')
-    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/20190304_142225/checkpoint.pth.tar',help='Model path')
-    parser.add_argument('--dataset_type', type=str, default='voc11',help='type of dataset')
-    parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOCdevkit/VOC2012',help='path to dataset')
+    parser.add_argument('--model', type=str, default='segnet')
+    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190309_212343/model_best.pth.tar',help='Model path')
+    parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
+    parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/CamVid',help='path to dataset')
+    parser.add_argument('--img_size', type=tuple, default=(256, 256), help='resize images')
     args = parser.parse_args()
 
     model_file = args.model_file
@@ -24,17 +25,18 @@ def main():
 
     loader = get_loader(args.dataset_type)
     val_loader = DataLoader(
-        loader(root, split='val', transform=True),
+        loader(root, split='test', transform=True, img_size=args.img_size),
         batch_size=1, shuffle=False, num_workers=4)
 
     n_classes = val_loader.dataset.n_classes
-
-    if args.model == 'fcn32s':
-        model = Models.FCN32s(n_classes=n_classes)
-    elif args.model == 'fcn8s':
-        model = Models.FCN8sAtOnce(n_classes=n_classes)
-    else:
-        raise ValueError
+    n_classes = 11
+    # if args.model == 'fcn32s':
+    #     model = Models.FCN32s(n_classes=n_classes)
+    # elif args.model == 'fcn8s':
+    #     model = Models.FCN8sAtOnce(n_classes=n_classes)
+    # else:
+    #     raise ValueError
+    model, _, _ = Models.model_loader(args.model, n_classes, resume=None)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
@@ -65,11 +67,11 @@ def main():
             img, lt = val_loader.dataset.untransform(img, lt)
             label_trues.append(lt)
             label_preds.append(lp)
-            if len(visualizations) < 9:
-                viz = visualize_segmentation(
-                    lbl_pred=lp, lbl_true=lt, img=img, n_class=n_classes,)
-                    # label_names=val_loader.dataset.class_names)
-                visualizations.append(viz)
+            # if len(visualizations) < 9:
+            #     viz = visualize_segmentation(
+            #         lbl_pred=lp, lbl_true=lt, img=img, n_class=n_classes,)
+            #         # label_names=val_loader.dataset.class_names)
+            #     visualizations.append(viz)
     metrics = label_accuracy_score(
         label_trues, label_preds, n_class=n_classes)
     metrics = np.array(metrics)

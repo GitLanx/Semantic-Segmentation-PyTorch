@@ -82,11 +82,11 @@ class Trainer:
                     img, lt = self.val_loader.dataset.untransform(img, lt)
                     label_trues.append(lt)
                     label_preds.append(lp)
-                    if len(visualizations) < 9:
-                        viz = visualize_segmentation(
-                            lbl_pred=lp, lbl_true=lt, img=img,
-                            n_class=self.n_classes)
-                        visualizations.append(viz)
+                    # if len(visualizations) < 9:
+                    #     viz = visualize_segmentation(
+                    #         lbl_pred=lp, lbl_true=lt, img=img,
+                    #         n_class=self.n_classes)
+                    #     visualizations.append(viz)
         metrics = label_accuracy_score(
             label_trues, label_preds, self.n_classes)
 
@@ -94,7 +94,7 @@ class Trainer:
         if not osp.exists(out):
             os.makedirs(out)
         out_file = osp.join(out, 'epoch%08d.jpg' % self.epoch)
-        scipy.misc.imsave(out_file, get_tile_image(visualizations))
+        # scipy.misc.imsave(out_file, get_tile_image(visualizations))
 
         val_loss /= len(self.val_loader)
 
@@ -135,8 +135,11 @@ class Trainer:
             self.optim.zero_grad()
             score = self.model(data)
 
-            loss = F.cross_entropy(score, target, reduction='sum', ignore_index=-1)
-            loss /= len(data)
+            weight = torch.Tensor([0.2595, 0.1826, 4.5640, 0.1417,
+                                   0.9051, 0.3826, 9.6446, 1.8418,
+                                   0.6823 ,6.2478, 7.3614]).to(self.device)
+            loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
+            # loss /= len(data)
             loss_data = loss.data.item()
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while training')

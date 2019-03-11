@@ -17,25 +17,25 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='fcn32s', help='model to train for')
-    parser.add_argument('--epochs', type=int, default=100, help='total epochs')
+    parser.add_argument('--model', type=str, default='segnet', help='model to train for')
+    parser.add_argument('--epochs', type=int, default=200, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
-    parser.add_argument('--batch_size', type=int, default=1, help='number of batch size')
-    parser.add_argument('--img_size', type=tuple, help='resize images to proper size')
+    parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
+    parser.add_argument('--img_size', type=tuple, default=(256, 256), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='camvid', help='choose which dataset to use')
-    parser.add_argument('--train_root', type=str, default='D:\lx\Camvid', help='path to train.txt')
+    parser.add_argument('--train_root', type=str, default='/home/ecust/Datasets/CamVid', help='path to train.txt')
     parser.add_argument('--val_root', type=str, help='path to val.txt')
-    parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
+    parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
-    parser.add_argument('--lr', type=float, default=1.0e-10, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
-    parser.add_argument('--beta1', type=float, default=0.99, help='momentum for sgd, beta1 for adam')
+    parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
 
     args = parser.parse_args()
 
     now = datetime.datetime.now()
-    args.out = osp.join(here, 'logs', now.strftime('%Y%m%d_%H%M%S'))
+    args.out = osp.join(here, 'logs', args.model + '_' + now.strftime('%Y%m%d_%H%M%S'))
 
     if not osp.exists(args.out):
         os.makedirs(args.out)
@@ -62,7 +62,7 @@ def main():
         batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(
         loader(root, split='val', transform=True, img_size=args.img_size),
-        batch_size=args.batch_size, shuffle=False, num_workers=4)
+        batch_size=1, shuffle=False, num_workers=4)
 
     # 2. model
     model, start_epoch, ckpt = model_loader(args.model, args.n_classes, args.resume)
