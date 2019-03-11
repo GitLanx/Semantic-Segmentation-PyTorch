@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=(256, 256), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='camvid', help='choose which dataset to use')
-    parser.add_argument('--train_root', type=str, default='/home/ecust/Datasets/CamVid', help='path to train.txt')
+    parser.add_argument('--train_root', type=str, default='D:/Datasets/CamVid', help='path to train.txt')
     parser.add_argument('--val_root', type=str, help='path to val.txt')
     parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
     parser.add_argument('--resume', help='path to checkpoint')
@@ -61,7 +61,7 @@ def main():
         loader(root, split='train', transform=True, img_size=args.img_size),
         batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(
-        loader(root, split='val', transform=True, img_size=args.img_size),
+        loader(root, split='test', transform=True, img_size=args.img_size),
         batch_size=1, shuffle=False, num_workers=4)
 
     # 2. model

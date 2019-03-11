@@ -14,9 +14,9 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('--model', type=str, default='segnet')
-    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190309_212343/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190311_141543/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
-    parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/CamVid',help='path to dataset')
+    parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
     parser.add_argument('--img_size', type=tuple, default=(256, 256), help='resize images')
     args = parser.parse_args()
 
@@ -29,7 +29,7 @@ def main():
         batch_size=1, shuffle=False, num_workers=4)
 
     n_classes = val_loader.dataset.n_classes
-    n_classes = 11
+
     # if args.model == 'fcn32s':
     #     model = Models.FCN32s(n_classes=n_classes)
     # elif args.model == 'fcn8s':
