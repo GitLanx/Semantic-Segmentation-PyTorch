@@ -80,9 +80,13 @@ class SegNet1(nn.Module):
 
     def _initialize_weights(self):
         for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
             if isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.fill_(0.001)
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0.001)
+                # m.weight.data.fill_(1)
+                # m.bias.data.fill_(0.001)
 
     def forward(self, x):
         out = self.conv1(x)
@@ -118,11 +122,11 @@ class SegNet1(nn.Module):
 
     def copy_params_from_vgg16(self, vgg16):
         vgg_features = [
-            vgg16.features[0:4],
-            vgg16.features[5:9],
-            vgg16.features[10:16],
-            vgg16.features[17:23],
-            vgg16.features[24:29]
+            vgg16.features[0:6],
+            vgg16.features[7:13],
+            vgg16.features[14:23],
+            vgg16.features[24:33],
+            vgg16.features[34:43]
         ]
         features = [
             self.conv1.encode,
@@ -132,12 +136,17 @@ class SegNet1(nn.Module):
             self.conv5.encode
         ]
         for l1, l2 in zip(vgg_features, features):
-            for i in range(len(list(l1.modules())) // 2):
-                assert isinstance(l1[i * 2], nn.Conv2d) == isinstance(l2[i * 3], nn.Conv2d)
-                assert l1[i * 2].weight.size() == l2[i * 3].weight.size()
-                assert l1[i * 2].bias.size() == l2[i * 3].bias.size()
-                l2[i * 3].weight.data = l1[i * 2].weight.data
-                l2[i * 3].bias.data = l1[i * 2].bias.data
+            for ll1, ll2 in zip(l1.children(), l2.children()):
+                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
+                if isinstance(ll1, nn.BatchNorm2d) and isinstance(ll2, nn.BatchNorm2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
 
 
 class SegNet(nn.Module):
@@ -145,15 +154,19 @@ class SegNet(nn.Module):
         super(SegNet, self).__init__()
         # conv1
         self.conv1 = ConvBlock(3, 64, 2)
-        self.pool = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/2
+        self.pool1 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/2
         # conv2
         self.conv2 = ConvBlock(64, 128, 2)
+        self.pool2 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
         # conv3
         self.conv3 = ConvBlock(128, 256, 3)
+        self.pool3 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
         # conv4
         self.conv4 = ConvBlock(256, 512, 3)
+        self.pool4 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
         # conv5
         self.conv5 = ConvBlock(512, 512, 3)
+        self.pool5 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
 
         self.conv6_D = DeconvBlock(512, 512, 3)
 
@@ -174,25 +187,29 @@ class SegNet(nn.Module):
 
     def _initialize_weights(self):
         for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
             if isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.fill_(0.001)
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0.001)
+                # m.weight.data.fill_(1)
+                # m.bias.data.fill_(0.001)
 
     def forward(self, x):
         out = self.conv1(x)
-        out = self.pool(out)
+        out = self.pool1(out)
 
         out = self.conv2(out)
-        out = self.pool(out)
+        out = self.pool2(out)
 
         out = self.conv3(out)
-        out = self.pool(out)
+        out = self.pool3(out)
 
         out = self.conv4(out)
-        out = self.pool(out)
+        out = self.pool4(out)
 
         out = self.conv5(out)
-        out = self.pool(out)
+        out = self.pool5(out)
 
         out = F.interpolate(out, scale_factor=2, mode='bilinear')
         out = self.conv6_D(out)
@@ -212,11 +229,11 @@ class SegNet(nn.Module):
 
     def copy_params_from_vgg16(self, vgg16):
         vgg_features = [
-            vgg16.features[0:4],
-            vgg16.features[5:9],
-            vgg16.features[10:16],
-            vgg16.features[17:23],
-            vgg16.features[24:29]
+            vgg16.features[0:6],
+            vgg16.features[7:13],
+            vgg16.features[14:23],
+            vgg16.features[24:33],
+            vgg16.features[34:43]
         ]
         features = [
             self.conv1.encode,
@@ -226,9 +243,14 @@ class SegNet(nn.Module):
             self.conv5.encode
         ]
         for l1, l2 in zip(vgg_features, features):
-            for i in range(len(list(l1.modules())) // 2):
-                assert isinstance(l1[i * 2], nn.Conv2d) == isinstance(l2[i * 3], nn.Conv2d)
-                assert l1[i * 2].weight.size() == l2[i * 3].weight.size()
-                assert l1[i * 2].bias.size() == l2[i * 3].bias.size()
-                l2[i * 3].weight.data = l1[i * 2].weight.data
-                l2[i * 3].bias.data = l1[i * 2].bias.data
+            for ll1, ll2 in zip(l1.children(), l2.children()):
+                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
+                if isinstance(ll1, nn.BatchNorm2d) and isinstance(ll2, nn.BatchNorm2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
