@@ -217,7 +217,7 @@ class DeepLabMScLargeFOV(nn.Module):
         state_dict = vgg.features.state_dict()
         self.features.load_state_dict(state_dict)
 
-        for m in self.MSc1.modules():
+        # for m in self.MSc1.modules():
             
         # for m in self.classifier.modules():
         #     if isinstance(m, nn.Conv2d):
