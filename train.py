@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
-    parser.add_argument('--lr', type=float, default=0.000001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
 
