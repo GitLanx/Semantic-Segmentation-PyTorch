@@ -96,7 +96,7 @@ class CamVidLoader(data.Dataset):
     def untransform(self, img, lbl):
         # img = self.untf(img)
         img = img.numpy()
-        # img = img.transpose(1, 2, 0)
+        img = img.transpose(1, 2, 0)
         img = img * 255
         img = img.astype(np.uint8)
         lbl = lbl.numpy()
