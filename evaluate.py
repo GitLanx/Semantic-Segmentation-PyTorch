@@ -67,11 +67,10 @@ def main():
             img, lt = val_loader.dataset.untransform(img, lt)
             label_trues.append(lt)
             label_preds.append(lp)
-            # if len(visualizations) < 9:
-            #     viz = visualize_segmentation(
-            #         lbl_pred=lp, lbl_true=lt, img=img, n_class=n_classes,)
-            #         # label_names=val_loader.dataset.class_names)
-            #     visualizations.append(viz)
+            if len(visualizations) < 9:
+                viz = visualize_segmentation(
+                    lbl_pred=lp, lbl_true=lt, img=img, n_class=n_classes)
+                visualizations.append(viz)
     metrics = label_accuracy_score(
         label_trues, label_preds, n_class=n_classes)
     metrics = np.array(metrics)

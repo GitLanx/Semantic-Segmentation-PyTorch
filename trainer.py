@@ -54,6 +54,56 @@ class Trainer:
         self.epochs = epochs
         self.best_mean_iu = 0
 
+    def train_epoch(self):
+        self.model.train()
+
+        label_trues, label_preds = [], []
+        for data, target in tqdm.tqdm(
+                self.train_loader, total=len(self.train_loader),
+                desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
+
+            assert self.model.training
+
+            data, target = data.to(self.device), target.to(self.device)
+            self.optim.zero_grad()
+            score = self.model(data)
+
+            # weight = torch.Tensor([0.2595, 0.1826, 4.5640, 0.1417,
+            #                        0.9051, 0.3826, 9.6446, 1.8418,
+            #                        0.6823 ,6.2478, 7.3614]).to(self.device)
+            loss = F.cross_entropy(score, target, weight=None, reduction='mean', ignore_index=-1)
+            # loss /= len(data)
+            loss_data = loss.data.item()
+            if np.isnan(loss_data):
+                raise ValueError('loss is nan while training')
+            loss.backward()
+            self.optim.step()
+
+            # metrics = []
+            lbl_pred = score.data.max(1)[1].cpu().numpy()
+            lbl_true = target.data.cpu().numpy()
+            for lt, lp in zip(lbl_true, lbl_pred):
+                label_trues.append(lt)
+                label_preds.append(lp)
+
+            metrics = label_accuracy_score(
+                    label_trues, label_preds, self.n_classes)
+
+            # metrics.append((acc, acc_cls, mean_iu, fwavacc))
+            # metrics = np.mean(metrics, axis=0)
+
+        with open(osp.join(self.out, 'log.csv'), 'a') as f:
+            elapsed_time = (
+                datetime.datetime.now(pytz.timezone('UTC')) -
+                self.timestamp_start).total_seconds()
+            log = [self.epoch] + [loss_data] + \
+                metrics.tolist() + [''] * 5 + [elapsed_time]
+            log = map(str, log)
+            f.write(','.join(log) + '\n')
+
+        if self.epoch % self.val_epoch == 0:
+            self.validate()
+
     def validate(self):
 
         val_loss = 0
@@ -61,8 +111,8 @@ class Trainer:
         label_trues, label_preds = [], []
         with torch.no_grad():
             self.model.eval()
-            for batch_idx, (data, target) in tqdm.tqdm(
-                    enumerate(self.val_loader), total=len(self.val_loader),
+            for data, target in tqdm.tqdm(
+                    self.val_loader, total=len(self.val_loader),
                     desc=f'Valid epoch={self.epoch}', ncols=80, leave=False):
 
                 data, target = data.to(self.device), target.to(self.device)
@@ -82,11 +132,11 @@ class Trainer:
                     img, lt = self.val_loader.dataset.untransform(img, lt)
                     label_trues.append(lt)
                     label_preds.append(lp)
-                    # if len(visualizations) < 9:
-                    #     viz = visualize_segmentation(
-                    #         lbl_pred=lp, lbl_true=lt, img=img,
-                    #         n_class=self.n_classes)
-                    #     visualizations.append(viz)
+                    if len(visualizations) < 9:
+                        viz = visualize_segmentation(
+                            lbl_pred=lp, lbl_true=lt, img=img,
+                            n_classes=self.n_classes)
+                        visualizations.append(viz)
         metrics = label_accuracy_score(
             label_trues, label_preds, self.n_classes)
 
@@ -94,7 +144,7 @@ class Trainer:
         if not osp.exists(out):
             os.makedirs(out)
         out_file = osp.join(out, 'epoch%08d.jpg' % self.epoch)
-        # scipy.misc.imsave(out_file, get_tile_image(visualizations))
+        scipy.misc.imsave(out_file, get_tile_image(visualizations))
 
         val_loss /= len(self.val_loader)
 
@@ -121,51 +171,6 @@ class Trainer:
         if is_best:
             shutil.copy(osp.join(self.out, 'checkpoint.pth.tar'),
                         osp.join(self.out, 'model_best.pth.tar'))
-
-    def train_epoch(self):
-        self.model.train()
-
-        for batch_index, (data, target) in tqdm.tqdm(
-                enumerate(self.train_loader), total=len(self.train_loader),
-                desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
-
-            assert self.model.training
-
-            data, target = data.to(self.device), target.to(self.device)
-            self.optim.zero_grad()
-            score = self.model(data)
-
-            # weight = torch.Tensor([0.2595, 0.1826, 4.5640, 0.1417,
-            #                        0.9051, 0.3826, 9.6446, 1.8418,
-            #                        0.6823 ,6.2478, 7.3614]).to(self.device)
-            loss = F.cross_entropy(score, target, weight=None, reduction='mean', ignore_index=-1)
-            # loss /= len(data)
-            loss_data = loss.data.item()
-            if np.isnan(loss_data):
-                raise ValueError('loss is nan while training')
-            loss.backward()
-            self.optim.step()
-
-            metrics = []
-            lbl_pred = score.data.max(1)[1].cpu().numpy()
-            lbl_true = target.data.cpu().numpy()
-            acc, acc_cls, mean_iu, fwavacc = \
-                label_accuracy_score(
-                    lbl_true, lbl_pred, self.n_classes)
-            metrics.append((acc, acc_cls, mean_iu, fwavacc))
-            metrics = np.mean(metrics, axis=0)
-
-        with open(osp.join(self.out, 'log.csv'), 'a') as f:
-            elapsed_time = (
-                datetime.datetime.now(pytz.timezone('UTC')) -
-                self.timestamp_start).total_seconds()
-            log = [self.epoch] + [loss_data] + \
-                metrics.tolist() + [''] * 5 + [elapsed_time]
-            log = map(str, log)
-            f.write(','.join(log) + '\n')
-
-        if self.epoch % self.val_epoch == 0:
-            self.validate()
 
     def train(self):
         for epoch in tqdm.trange(self.epoch, self.epochs + 1,

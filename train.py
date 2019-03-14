@@ -17,7 +17,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='segnet', help='model to train for')
+    parser.add_argument('--model', type=str, default='unet', help='model to train for')
     parser.add_argument('--epochs', type=int, default=200, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
