@@ -1,15 +1,7 @@
-from distutils.version import LooseVersion
 import math
-import warnings
-
-try:
-    import cv2
-except ImportError:
-    cv2 = None
-
 import numpy as np
 import scipy.ndimage
-import six
+from PIL import Image
 import skimage
 import skimage.color
 import skimage.transform
@@ -17,85 +9,32 @@ import skimage.transform
 # https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
 
 # -----------------------------------------------------------------------------
-# Chainer Util
-# -----------------------------------------------------------------------------
-
-
-def batch_to_vars(batch, device=-1):
-    import chainer
-    from chainer import cuda
-    in_arrays = [np.asarray(x) for x in zip(*batch)]
-    if device >= 0:
-        in_arrays = [cuda.to_gpu(x, device=device) for x in in_arrays]
-    in_vars = [chainer.Variable(x) for x in in_arrays]
-    return in_vars
-
-
-# -----------------------------------------------------------------------------
 # Color Util
 # -----------------------------------------------------------------------------
 
-def bitget(byteval, idx):
-    return ((byteval & (1 << idx)) != 0)
-
-
-def labelcolormap(*args, **kwargs):
-    warnings.warn('labelcolormap is renamed to label_colormap.',
-                  DeprecationWarning)
-    return label_colormap(*args, **kwargs)
-
-
-def label_colormap(N=256):
-    cmap = np.zeros((N, 3))
-    for i in six.moves.range(0, N):
-        id = i
-        r, g, b = 0, 0, 0
-        for j in six.moves.range(0, 8):
-            r = np.bitwise_or(r, (bitget(id, 0) << 7 - j))
-            g = np.bitwise_or(g, (bitget(id, 1) << 7 - j))
-            b = np.bitwise_or(b, (bitget(id, 2) << 7 - j))
-            id = (id >> 3)
-        cmap[i, 0] = r
-        cmap[i, 1] = g
-        cmap[i, 2] = b
-    cmap = cmap.astype(np.float32) / 255
-    return cmap
-
-
-def visualize_labelcolormap(*args, **kwargs):
-    warnings.warn(
-        'visualize_labelcolormap is renamed to visualize_label_colormap',
-        DeprecationWarning)
-    return visualize_label_colormap(*args, **kwargs)
-
+def getpalette(n_classes):
+    n = n_classes
+    palette = [0]*(n*3)
+    for j in range(0, n):
+        lab = j
+        palette[j*3+0] = 0
+        palette[j*3+1] = 0
+        palette[j*3+2] = 0
+        i = 0
+        while (lab > 0):
+            palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+            palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+            palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+            i = i + 1
+            lab >>= 3
+    return palette
 
 def visualize_label_colormap(cmap):
     n_colors = len(cmap)
     ret = np.zeros((n_colors, 10 * 10, 3))
-    for i in six.moves.range(n_colors):
+    for i in range(n_colors):
         ret[i, ...] = cmap[i]
     return ret.reshape((n_colors * 10, 10, 3))
-
-
-def get_label_colortable(n_labels, shape):
-    if cv2 is None:
-        raise RuntimeError('get_label_colortable requires OpenCV (cv2)')
-    rows, cols = shape
-    if rows * cols < n_labels:
-        raise ValueError
-    cmap = label_colormap(n_labels)
-    table = np.zeros((rows * cols, 50, 50, 3), dtype=np.uint8)
-    for lbl_id, color in enumerate(cmap):
-        color_uint8 = (color * 255).astype(np.uint8)
-        table[lbl_id, :, :] = color_uint8
-        text = '{:<2}'.format(lbl_id)
-        cv2.putText(table[lbl_id], text, (5, 35),
-                    cv2.cv.CV_FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 3)
-    table = table.reshape(rows, cols, 50, 50, 3)
-    table = table.transpose(0, 2, 1, 3, 4)
-    table = table.reshape(rows * 50, cols * 50, 3)
-    return table
-
 
 # -----------------------------------------------------------------------------
 # Evaluation
@@ -178,8 +117,8 @@ def _tile_images(imgs, tile_shape, concatenated_image):
         else:
             concatenated_image = np.zeros(
                 (one_height * y_num, one_width * x_num), dtype=np.uint8)
-    for y in six.moves.range(y_num):
-        for x in six.moves.range(x_num):
+    for y in range(y_num):
+        for x in range(x_num):
             i = x + y * x_num
             if i >= len(imgs):
                 pass
@@ -190,16 +129,12 @@ def _tile_images(imgs, tile_shape, concatenated_image):
 
 
 def get_tile_image(imgs, tile_shape=None, result_img=None, margin_color=None):
-    """Concatenate images whose sizes are different.
-    @param imgs: image list which should be concatenated
-    @param tile_shape: shape for which images should be concatenated
+    """Concatenate images whose sizes are different.  
+    @param imgs: image list which should be concatenated  
+    @param tile_shape: shape for which images should be concatenated  
     @param result_img: numpy array to put result image
     """
     def resize(*args, **kwargs):
-        # anti_aliasing arg cannot be passed to skimage<0.14
-        # use LooseVersion to allow 0.14dev.
-        if LooseVersion(skimage.__version__) < LooseVersion('0.14'):
-            kwargs.pop('anti_aliasing', None)
         return skimage.transform.resize(*args, **kwargs)
 
     def get_tile_shape(img_num):
@@ -240,72 +175,28 @@ def get_tile_image(imgs, tile_shape=None, result_img=None, margin_color=None):
     return _tile_images(imgs, tile_shape, result_img)
 
 
-def label2rgb(lbl, img=None, label_names=None, n_labels=None,
-              alpha=0.5, thresh_suppress=0):
-    if label_names is None:
-        if n_labels is None:
-            n_labels = lbl.max() + 1  # +1 for bg_label 0
-    else:
-        if n_labels is None:
-            n_labels = len(label_names)
-        else:
-            assert n_labels == len(label_names)
-    cmap = label_colormap(n_labels)
-    cmap = (cmap * 255).astype(np.uint8)
+def label2rgb(lbl, img=None, n_labels=None, alpha=0.5):
+    if n_labels is None:
+        n_labels = lbl.max() + 1  # +1 for bg_label 0
+
+    cmap = getpalette(n_labels)
+    cmap = np.array(cmap).reshape([-1, 3]).astype(np.uint8)
 
     lbl_viz = cmap[lbl]
     lbl_viz[lbl == -1] = (0, 0, 0)  # unlabeled
 
     if img is not None:
-        img_gray = skimage.color.rgb2gray(img)
-        img_gray = skimage.color.gray2rgb(img_gray)
-        img_gray *= 255
-        lbl_viz = alpha * lbl_viz + (1 - alpha) * img_gray
+        # img_gray = Image.fromarray(img)
+        # img_gray.convert('L')
+        # img_gray.convert('RGB')
+        # img_gray = np.asarray(img_gray, dtype=np.uint8)
+
+        # img_gray = skimage.color.rgb2gray(img)
+        # img_gray = skimage.color.gray2rgb(img_gray)
+        # img_gray *= 255
+        lbl_viz = alpha * lbl_viz + (1 - alpha) * img
         lbl_viz = lbl_viz.astype(np.uint8)
 
-    if label_names is None:
-        return lbl_viz
-
-    # cv2 is required only if label_names is not None
-    import cv2
-    if cv2 is None:
-        warnings.warn('label2rgb with label_names requires OpenCV (cv2), '
-                      'so ignoring label_names values.')
-        return lbl_viz
-
-    np.random.seed(1234)
-    for label in np.unique(lbl):
-        if label == -1:
-            continue  # unlabeled
-
-        mask = lbl == label
-        if 1. * mask.sum() / mask.size < thresh_suppress:
-            continue
-        mask = (mask * 255).astype(np.uint8)
-        y, x = scipy.ndimage.center_of_mass(mask)
-        y, x = map(int, [y, x])
-
-        if lbl[y, x] != label:
-            Y, X = np.where(mask)
-            point_index = np.random.randint(0, len(Y))
-            y, x = Y[point_index], X[point_index]
-
-        text = label_names[label]
-        font_face = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.7
-        thickness = 2
-        text_size, baseline = cv2.getTextSize(
-            text, font_face, font_scale, thickness)
-
-        def get_text_color(color):
-            if color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114 > 170:
-                return (0, 0, 0)
-            return (255, 255, 255)
-
-        color = get_text_color(lbl_viz[y, x])
-        cv2.putText(lbl_viz, text,
-                    (x - text_size[0] // 2, y),
-                    font_face, font_scale, color, thickness)
     return lbl_viz
 
 
@@ -332,8 +223,7 @@ def visualize_segmentation(**kwargs):
     img = kwargs.pop('img', None)
     lbl_true = kwargs.pop('lbl_true', None)
     lbl_pred = kwargs.pop('lbl_pred', None)
-    n_class = kwargs.pop('n_class', None)
-    label_names = kwargs.pop('label_names', None)
+    n_class = kwargs.pop('n_classes', None)
     if kwargs:
         raise RuntimeError(
             'Unexpected keys in kwargs: {}'.format(kwargs.keys()))
@@ -357,9 +247,8 @@ def visualize_segmentation(**kwargs):
     if lbl_true is not None:
         viz_trues = [
             img,
-            label2rgb(lbl_true, label_names=label_names, n_labels=n_class),
-            label2rgb(lbl_true, img, label_names=label_names,
-                      n_labels=n_class),
+            label2rgb(lbl_true, n_labels=n_class),
+            label2rgb(lbl_true, img, n_labels=n_class),
         ]
         viz_trues[1][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
         viz_trues[2][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
@@ -368,9 +257,8 @@ def visualize_segmentation(**kwargs):
     if lbl_pred is not None:
         viz_preds = [
             img,
-            label2rgb(lbl_pred, label_names=label_names, n_labels=n_class),
-            label2rgb(lbl_pred, img, label_names=label_names,
-                      n_labels=n_class),
+            label2rgb(lbl_pred, n_labels=n_class),
+            label2rgb(lbl_pred, img, n_labels=n_class),
         ]
         if mask_unlabeled is not None and viz_unlabeled is not None:
             viz_preds[1][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
