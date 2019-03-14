@@ -97,7 +97,7 @@ class Trainer:
                 datetime.datetime.now(pytz.timezone('UTC')) -
                 self.timestamp_start).total_seconds()
             log = [self.epoch] + [loss_data] + \
-                metrics.tolist() + [''] * 5 + [elapsed_time]
+                list(metrics) + [''] * 5 + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
 
