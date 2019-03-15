@@ -12,13 +12,13 @@ import tqdm
 
 
 class Trainer:
-    def __init__(self, device, model, optimizer, train_loader, val_loader,
+    def __init__(self, device, model, optimizer, scheduler, train_loader, val_loader,
                  out, epochs, n_classes, val_epoch=None):
         self.device = device
 
         self.model = model
         self.optim = optimizer
-
+        self.scheduler = scheduler
         self.train_loader = train_loader
         self.val_loader = val_loader
 
@@ -100,9 +100,13 @@ class Trainer:
                 list(metrics) + [''] * 5 + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
+        
+        self.scheduler.step()
 
         if self.epoch % self.val_epoch == 0:
             self.validate()
+            lr = self.optim.param_groups[0]['lr']
+            print('learning rate = %.7f' % lr)
 
     def validate(self):
 
