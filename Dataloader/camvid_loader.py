@@ -37,27 +37,26 @@ class CamVidLoader(data.Dataset):
         self.is_transform = transform
         self.augmentations = augmentations
         self.n_classes = 11
-        self.files = collections.defaultdict(list)
         self.img_size = img_size
 
         path = os.path.join(self.root, self.split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
 
-        # self.mean = torch.tensor([0.485, 0.456, 0.406])
-        # self.std = torch.tensor([0.229, 0.224, 0.225])
+        self.mean = torch.tensor([0.485, 0.456, 0.406])
+        self.std = torch.tensor([0.229, 0.224, 0.225])
         self.tf = transforms.Compose(
             [
                 transforms.ToTensor(),
-                # transforms.Normalize(self.mean.tolist(), self.std.tolist()),
+                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
             ]
         )
-        # self.untf = transforms.Compose(
-        #     [
-        #         transforms.Normalize((-self.mean / self.std).tolist(),
-        #                              (1.0 / self.std).tolist()),
-        #     ]
-        # )
+        self.untf = transforms.Compose(
+            [
+                transforms.Normalize((-self.mean / self.std).tolist(),
+                                     (1.0 / self.std).tolist()),
+            ]
+        )
 
         print(f"Found {len(self.file_list)} {split} images")
 
@@ -94,7 +93,7 @@ class CamVidLoader(data.Dataset):
         return img, lbl
 
     def untransform(self, img, lbl):
-        # img = self.untf(img)
+        img = self.untf(img)
         img = img.numpy()
         img = img.transpose(1, 2, 0)
         img = img * 255
