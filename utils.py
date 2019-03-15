@@ -5,6 +5,7 @@ from PIL import Image
 import skimage
 import skimage.color
 import skimage.transform
+from torch.optim import lr_scheduler
 
 # https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
 
@@ -39,6 +40,7 @@ def visualize_label_colormap(cmap):
 # -----------------------------------------------------------------------------
 # Evaluation
 # -----------------------------------------------------------------------------
+
 def _fast_hist(label_true, label_pred, n_class):
     mask = (label_true >= 0) & (label_true < n_class)
     hist = np.bincount(
@@ -74,6 +76,7 @@ def label_accuracy_score(label_trues, label_preds, n_class):
 # -----------------------------------------------------------------------------
 # Visualization
 # -----------------------------------------------------------------------------
+
 def centerize(src, dst_shape, margin_color=None):
     """Centerize image for specified image size
     @param src: image to centerize
@@ -271,3 +274,33 @@ def visualize_segmentation(**kwargs):
         return get_tile_image(vizs, (2, 1))
     else:
         raise RuntimeError
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+
+def get_scheduler(optimizer, opt):
+    """Return a learning rate scheduler
+    Parameters:
+        optimizer          -- the optimizer of the network
+        opt (option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions．　
+                              opt.lr_policy is the name of learning rate policy: linear | step | plateau | cosine
+    For 'linear', we keep the same learning rate for the first <opt.niter> epochs
+    and linearly decay the rate to zero over the next <opt.niter_decay> epochs.
+    For other schedulers (step, plateau, and cosine), we use the default PyTorch schedulers.
+    See https://pytorch.org/docs/stable/optim.html for more details.
+    """
+    if opt.lr_policy == 'linear':
+        def lambda_rule(epoch):
+            lr_l = 1.0 - max(0, epoch + 1 - opt.epochs) / float(opt.niter_decay + 1)
+            return lr_l
+        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
+    elif opt.lr_policy == 'step':
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.lr_decay_step, gamma=0.1)
+    elif opt.lr_policy == 'plateau':
+        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=1e-4, patience=5)
+    elif opt.lr_policy == 'cosine':
+        scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs)
+    else:
+        return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
+    return scheduler
