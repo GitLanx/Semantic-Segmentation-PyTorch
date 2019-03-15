@@ -3,3 +3,4 @@ from .FCN import FCN32s
 from .FCN import FCN8sAtOnce
 from .UNet import UNet
 from .SegNet import SegNet
+from .DeepLab_v1 import DeepLabLargeFOV, DeepLabMScLargeFOV

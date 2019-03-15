@@ -207,30 +207,59 @@ class DeepLabMScLargeFOV(nn.Module):
         classifier.append(nn.Conv2d(1024, 1024, 1))
         classifier.append(nn.ReLU(inplace=True))
         classifier.append(nn.Dropout(p=0.5))
-        classifier.append(nn.Conv2d(1024, n_classes, 1))
         self.classifier = nn.Sequential(*classifier)
+
+        self.score = nn.Conv2d(1024, n_classes, 1)
 
         self._initialize_weights()
 
     def _initialize_weights(self):
-        vgg = torchvision.models.vgg16(pretrained=True)
-        state_dict = vgg.features.state_dict()
-        self.features.load_state_dict(state_dict)
+        vgg16 = torchvision.models.vgg16(pretrained=True)
+        vgg_features = [
+            vgg16.features[0:4],
+            vgg16.features[5:9],
+            vgg16.features[10:16],
+            vgg16.features[17:23],
+            vgg16.features[24:30]
+        ]
+        features = [
+            self.features1,
+            self.features2,
+            self.features3,
+            self.features4,
+            self.features5
+        ]
+        for l1, l2 in zip(vgg_features, features):
+            for ll1, ll2 in zip(l1.children(), l2.children()):
+                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
 
-        # for m in self.MSc1.modules():
-            
-        # for m in self.classifier.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         nn.init.kaiming_normal_(m.weight)
-        #         nn.init.constant_(m.bias, 0)
+        for module in [self.MSc1, self.MSc2, self.MSc3, self.MSc4, self.MSc5]:
+            for m in module.children():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.normal_(m.weight, std=0.001)
+                    nn.init.constant_(m.bias, 0)
 
         nn.init.normal_(self.score.weight, std=0.01)
         nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
         N, C, H, W = x.size()
-        out = self.features(x)
+        fuse1 = self.MSc1(x)
+        out = self.features1(x)
+        fuse2 = self.MSc2(out)
+        out = self.features2(out)
+        fuse3 = self.MSc3(out)
+        out = self.features3(out)
+        fuse4 = self.MSc4(out)
+        out = self.features4(out)
+        fuse5 = self.MSc5(out)
+        out = self.features5(out)
         out = self.classifier(out)
         out = self.score(out)
+        out = fuse1 + fuse2 + fuse3 + fuse4 + fuse5
         out = F.interpolate(out, (H, W), mode='bilinear', align_corners=True)
         return out
