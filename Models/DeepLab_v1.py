@@ -77,7 +77,7 @@ class DeepLabLargeFOV(nn.Module):
         nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
-        N, C, H, W = x.size()
+        _, _, H, W = x.size()
         out = self.features(x)
         out = self.classifier(out)
         out = self.score(out)
@@ -247,7 +247,7 @@ class DeepLabMScLargeFOV(nn.Module):
         nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
-        N, C, H, W = x.size()
+        _, _, H, W = x.size()
         fuse1 = self.MSc1(x)
         out = self.features1(x)
         fuse2 = self.MSc2(out)
