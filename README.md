@@ -15,7 +15,7 @@ FCN8sAtOnce(original|-|-|65.4%|
 ### CamVid
 model|acc|acc_cls|mean_iu|params
 ---|---|---|---|---
-SegNet|86.96%|61.47%|50.61%|lr=0.1<br>reduction='mean'
+SegNet(Maxunpooling)|86.96%|61.47%|50.61%|lr=0.1<br>reduction='mean'
 SegNet(original)|88.6%|65.9%|50.2%
 UNet|85.17%|59.79%|48.70%|lr=0.01<br>reduction='mean'
 DeepLab-LargeFov|85.97%|62.76%|50.84%|lr=0.01<br>reduction='mean'
