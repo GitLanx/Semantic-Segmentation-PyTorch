@@ -47,7 +47,7 @@ class DeepLabLargeFOV(nn.Module):
         features.append(nn.ReLU(inplace=True))
         features.append(nn.Conv2d(512, 512, 3, padding=2, dilation=2))
         features.append(nn.ReLU(inplace=True))
-        features.append(nn.MaxPool2d(3, stride=1, padding=1))
+        features.append(nn.MaxPool2d(3, stride=1, padding=1, ceil_mode=True))
         self.features = nn.Sequential(*features)
 
         classifier = []
