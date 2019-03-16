@@ -292,8 +292,13 @@ def get_scheduler(optimizer, opt):
     """
     if opt.lr_policy == 'linear':
         def lambda_rule(epoch):
-            lr_l = 1.0 - max(0, epoch + 1 - opt.epochs) / float(opt.niter_decay + 1)
-            return lr_l
+            lr = 1.0 - max(0, epoch + 1 - opt.epochs) / float(opt.niter_decay + 1)
+            return lr
+        scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
+    elif opt.lr_policy == 'poly':
+        def lambda_rule(epoch):
+            lr = (1 - epoch / opt.epochs) ** opt.lr_power
+            return lr
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif opt.lr_policy == 'step':
         scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.lr_decay_step, gamma=0.1)
