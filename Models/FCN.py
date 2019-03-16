@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-
+import torchvision
 
 # https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/surgery.py
 def get_upsampling_weight(in_channels, out_channels, kernel_size):
@@ -24,6 +24,98 @@ def get_upsampling_weight(in_channels, out_channels, kernel_size):
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/models/fcn32s.py
 
 class FCN32s(nn.Module):
+    def __init__(self, n_classes=21):
+        super(FCN32s, self).__init__()
+        features = []
+        # conv1
+        features.append(nn.Conv2d(3, 64, 3, padding=100))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(64, 64, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/2
+
+        # conv2
+        features.append(nn.Conv2d(64, 128, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(128, 128, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/4
+
+        # conv3
+        features.append(nn.Conv2d(128, 256, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(256, 256, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(256, 256, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/8
+
+        # conv4
+        features.append(nn.Conv2d(256, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(512, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(512, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/16
+
+        # conv5
+        features.append(nn.Conv2d(512, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(512, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.Conv2d(512, 512, 3, padding=1))
+        features.append(nn.ReLU(inplace=True))
+        features.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/32
+
+        self.features = nn.Sequential(*features)
+
+        fc = []
+        fc.append(nn.Conv2d(512, 4096, 7))
+        fc.append(nn.ReLU(inplace=True))
+        fc.append(nn.Dropout2d())
+        fc.append(nn.Conv2d(4096, 4096, 1))
+        fc.append(nn.ReLU(inplace=True))
+        fc.append(nn.Dropout2d())
+        self.fc = nn.Sequential(*fc)
+
+        self.score_fr = nn.Conv2d(4096, n_classes, 1)
+        self.upscore = nn.ConvTranspose2d(n_classes, n_classes, 64, stride=32,
+                                          bias=False)
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data.zero_()
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            if isinstance(m, nn.ConvTranspose2d):
+                assert m.kernel_size[0] == m.kernel_size[1]
+                initial_weight = get_upsampling_weight(
+                    m.in_channels, m.out_channels, m.kernel_size[0])
+                m.weight.data.copy_(initial_weight)
+
+        vgg16 = torchvision.models.vgg16(pretrained=True)
+        state_dict = vgg16.features.state_dict()
+        self.features.load_state_dict(state_dict)
+
+        for l1, l2 in zip(vgg16.classifier.children(), self.fc):
+            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
+                l2.weight.data = l1.weight.data.view(l2.weight.size())
+                l2.bias.data = l1.bias.data.view(l2.bias.size())
+
+    def forward(self, x):
+        out = self.features(x)
+        out = self.fc(out)
+        out = self.score_fr(out)
+        out = self.upscore(out)
+        out = out[:, :, 19:19 + x.size()[2], 19:19 + x.size()[3]].contiguous()
+
+        return out
+
+class FCN32s1(nn.Module):
     def __init__(self, n_classes=21):
         super(FCN32s, self).__init__()
         # conv1
