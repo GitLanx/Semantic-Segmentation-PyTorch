@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='deeplab-largefov', help='model to train for')
+    parser.add_argument('--model', type=str, default='fcn32s', help='model to train for')
     parser.add_argument('--epochs', type=int, default=200, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
@@ -30,10 +30,11 @@ def main():
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--lr_policy', type=str, default='step', help='learning rate policy')
+    parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
     parser.add_argument('--lr_decay_step', type=float, default=30, help='step size for step learning policy')
+    parser.add_argument('--lr_power', type=int, default=0.9, help='power parameter for poly learning policy')
     args = parser.parse_args()
 
     now = datetime.datetime.now()
@@ -53,10 +54,6 @@ def main():
     # 1. dataset
 
     root = args.train_root
-    # if args.dataset_type == '':
-    #     from Dataloader import BaseLoader as loader
-    # elif args.dataset_type == 'voc':
-    #     from Dataloader import VOCLoader as loader
     loader = get_loader(args.dataset_type)
 
     train_loader = DataLoader(
