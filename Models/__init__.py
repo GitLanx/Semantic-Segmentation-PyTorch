@@ -3,13 +3,15 @@ from .UNet import UNet
 from .SegNet import SegNet
 from .DeepLab_v1 import DeepLabLargeFOV, DeepLabMScLargeFOV
 from .DeepLab_v2 import DeepLabASPP
+from .DeepLab_v3 import DeepLabV3
 import torch
 from torchvision import models
 
 VALID_MODEL = ['fcn32s', 'fcn8s', 'unet', 'segnet', 'deeplab-largefov',
-               'deeplab-msclargefov', 'deeplab-aspp']
+               'deeplab-msclargefov', 'deeplab-aspp', 'deeplabv3']
 
 def model_loader(model_name, n_classes, resume):
+    model_name = model_name.lower()
     if model_name == 'fcn32s':
         model = FCN32s(n_classes=n_classes)
     elif model_name == 'fcn8s':
@@ -24,6 +26,8 @@ def model_loader(model_name, n_classes, resume):
         model = DeepLabMScLargeFOV(n_classes=n_classes)
     elif model_name == 'deeplab-aspp':
         model = DeepLabASPP(n_classes=n_classes)
+    elif model_name == 'deeplabv3':
+        model = DeepLabV3(n_classes=n_classes)
     else:
         raise ValueError('Unsupported model, '
                          'valid models as follows:\n{}'.format(', '.join(VALID_MODEL)))
