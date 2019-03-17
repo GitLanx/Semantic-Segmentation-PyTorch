@@ -110,12 +110,12 @@ class DeepLabASPP(nn.Module):
         # nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
-        N, C, H, W = x.size()
+        _, _, h, w = x.size()
         out = self.features(x)
         fuse1 = self.fc1(out)
         fuse2 = self.fc2(out)
         fuse3 = self.fc3(out)
         fuse4 = self.fc4(out)
         out = fuse1 + fuse2 + fuse3 + fuse4
-        out = F.interpolate(out, (H, W), mode='bilinear', align_corners=True)
+        out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out

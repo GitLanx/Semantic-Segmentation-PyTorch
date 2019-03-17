@@ -77,11 +77,11 @@ class DeepLabLargeFOV(nn.Module):
         nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
-        _, _, H, W = x.size()
+        _, _, h, w = x.size()
         out = self.features(x)
         out = self.classifier(out)
         out = self.score(out)
-        out = F.interpolate(out, (H, W), mode='bilinear', align_corners=True)
+        out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
 
 
@@ -247,7 +247,7 @@ class DeepLabMScLargeFOV(nn.Module):
         nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
-        _, _, H, W = x.size()
+        _, _, h, w = x.size()
         fuse1 = self.MSc1(x)
         out = self.features1(x)
         fuse2 = self.MSc2(out)
@@ -261,5 +261,5 @@ class DeepLabMScLargeFOV(nn.Module):
         out = self.classifier(out)
         out = self.score(out)
         out = fuse1 + fuse2 + fuse3 + fuse4 + fuse5
-        out = F.interpolate(out, (H, W), mode='bilinear', align_corners=True)
+        out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
