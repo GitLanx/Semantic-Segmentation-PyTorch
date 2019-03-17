@@ -68,10 +68,11 @@ class Trainer:
             self.optim.zero_grad()
             score = self.model(data)
 
-            # weight = torch.Tensor([0.2595, 0.1826, 4.5640, 0.1417,
-            #                        0.9051, 0.3826, 9.6446, 1.8418,
-            #                        0.6823 ,6.2478, 7.3614]).to(self.device)
-            loss = F.cross_entropy(score, target, weight=None, reduction='mean', ignore_index=-1)
+            weight = self.train_loader.dataset.class_weight
+            if weight:
+                weight = torch.Tensor(weight).to(self.device)
+
+            loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
             # loss /= len(data)
             loss_data = loss.data.item()
             if np.isnan(loss_data):

@@ -18,11 +18,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='fcn32s', help='model to train for')
-    parser.add_argument('--epochs', type=int, default=200, help='total epochs')
+    parser.add_argument('--model', type=str, default='deeplabv3', help='model to train for')
+    parser.add_argument('--epochs', type=int, default=100, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
-    parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
-    parser.add_argument('--img_size', type=tuple, default=(321, 321), help='resize images to proper size')
+    parser.add_argument('--batch_size', type=int, default=8, help='number of batch size')
+    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='camvid', help='choose which dataset to use')
     parser.add_argument('--train_root', type=str, default='D:/Datasets/CamVid', help='path to train.txt')
     parser.add_argument('--val_root', type=str, help='path to val.txt')
@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
-    parser.add_argument('--lr_decay_step', type=float, default=30, help='step size for step learning policy')
+    parser.add_argument('--lr_decay_step', type=float, default=20, help='step size for step learning policy')
     parser.add_argument('--lr_power', type=int, default=0.9, help='power parameter for poly learning policy')
     args = parser.parse_args()
 

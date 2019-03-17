@@ -14,11 +14,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='fcn32s')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/fcn32s_20190316_181532/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model', type=str, default='deeplabv3')
+    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/deeplabv3_20190317_141747/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
     parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=(321, 321), help='resize images')
+    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images')
     args = parser.parse_args()
 
     model_file = args.model_file
@@ -31,12 +31,6 @@ def main():
 
     n_classes = val_loader.dataset.n_classes
 
-    # if args.model == 'fcn32s':
-    #     model = Models.FCN32s(n_classes=n_classes)
-    # elif args.model == 'fcn8s':
-    #     model = Models.FCN8sAtOnce(n_classes=n_classes)
-    # else:
-    #     raise ValueError
     model, _, _ = Models.model_loader(args.model, n_classes, resume=None)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,9 +49,7 @@ def main():
     print('==> Evaluating with {} dataset'.format(args.dataset_type))
     visualizations = []
     label_trues, label_preds = [], []
-    for batch_idx, (data, target) in tqdm.tqdm(enumerate(val_loader),
-                                               total=len(val_loader),
-                                               ncols=80, leave=False):
+    for data, target in tqdm.tqdm(val_loader, total=len(val_loader), ncols=80, leave=False):
         data, target = data.to(device), target.to(device)
         score = model(data)
 
