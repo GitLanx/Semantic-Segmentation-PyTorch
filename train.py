@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--model', type=str, default='deeplabv3', help='model to train for')
     parser.add_argument('--epochs', type=int, default=100, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
-    parser.add_argument('--batch_size', type=int, default=8, help='number of batch size')
+    parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='camvid', help='choose which dataset to use')
     parser.add_argument('--train_root', type=str, default='D:/Datasets/CamVid', help='path to train.txt')

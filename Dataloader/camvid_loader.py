@@ -172,7 +172,7 @@ if __name__ == '__main__':
     local_path = r'E:\dataset\VOC2012'
     bs = 4
     # augs = aug.Compose([aug.RandomRotate(10), aug.RandomHorizontallyFlip()])
-    dst = VOCLoader(root=local_path, is_transform=True)
+    dst = CamVidLoader(root=local_path, is_transform=True)
     trainloader = data.DataLoader(dst, batch_size=bs)
     for i, data in enumerate(trainloader):
         imgs, labels = data

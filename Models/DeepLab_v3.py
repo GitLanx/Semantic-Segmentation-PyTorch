@@ -8,28 +8,20 @@ class DeepLabV3(nn.Module):
     def __init__(self, n_classes):
         super(DeepLabV3, self).__init__()
 
-        resnet = torchvision.models.resnet50(pretrained=True)
-        self.conv1 = resnet.conv1
-        self.bn1 = resnet.bn1
-        self.relu = resnet.relu
-        self.maxpool = resnet.maxpool
-        self.layer1 = resnet.layer1
-        self.layer2 = resnet.layer2
-        self.layer3 = resnet.layer3
-        self.layer4 = resnet.layer4
+        self.resnet = ResNet(Bottleneck, [3, 4, 6, 3])
+        resnet_pretrained = torchvision.models.resnet50(pretrained=True)
+        self.resnet.conv1.load_state_dict(resnet_pretrained.conv1.state_dict())
+        self.resnet.bn1.load_state_dict(resnet_pretrained.bn1.state_dict())
+        self.resnet.layer1.load_state_dict(resnet_pretrained.layer1.state_dict())
+        self.resnet.layer2.load_state_dict(resnet_pretrained.layer2.state_dict())
+        self.resnet.layer3.load_state_dict(resnet_pretrained.layer3.state_dict())
+        self.resnet.layer4.load_state_dict(resnet_pretrained.layer4.state_dict())
         self.head = _DeepLabHead(n_classes)
 
     
     def forward(self, x):
         _, _, h, w = x.size()
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.maxpool(out)
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
+        out = self.resnet(x)
         out = self.head(out)
         out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=True)
         return out
@@ -37,7 +29,7 @@ class DeepLabV3(nn.Module):
 class _DeepLabHead(nn.Module):
     def __init__(self, n_classes):
         super(_DeepLabHead, self).__init__()
-        self.aspp = ASPP(2048, [6, 12, 18])
+        self.aspp = ASPP(2048, [12, 24, 36])
         self.block = []
         self.block.append(nn.Conv2d(in_channels=256, out_channels=256,
                                     kernel_size=3, padding=1, bias=False))
@@ -110,3 +102,94 @@ class ASPP(nn.Module):
             nn.ReLU(inplace=True)
         )
         return block
+
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None, multi_grid=1):
+        super(Bottleneck, self).__init__()
+        self.conv1 = conv1x1(inplanes, planes)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
+                               padding=dilation*multi_grid, dilation=dilation*multi_grid, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = conv1x1(planes, planes * self.expansion)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class ResNet(nn.Module):
+    """
+    Adapted from https://github.com/speedinghzl/pytorch-segmentation-toolbox/blob/master/networks/deeplabv3.py
+    """
+    def __init__(self, block, layers):
+        super(ResNet, self).__init__()
+        self.inplanes = 64
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
+
+    def _make_layer(self, block, planes, blocks, stride=1, dilation=1, multi_grid=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion))
+
+        layers = []
+        generate_multi_grid = lambda index, grids: grids[index%len(grids)] if isinstance(grids, tuple) else 1
+        layers.append(block(self.inplanes, planes, stride, dilation=dilation, downsample=downsample, multi_grid=generate_multi_grid(0, multi_grid)))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes, dilation=dilation, multi_grid=generate_multi_grid(i, multi_grid)))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        return x
