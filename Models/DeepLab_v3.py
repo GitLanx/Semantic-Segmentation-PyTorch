@@ -18,7 +18,6 @@ class DeepLabV3(nn.Module):
         self.resnet.layer4.load_state_dict(resnet_pretrained.layer4.state_dict())
         self.head = _DeepLabHead(n_classes)
 
-    
     def forward(self, x):
         _, _, h, w = x.size()
         out = self.resnet(x)
@@ -29,16 +28,17 @@ class DeepLabV3(nn.Module):
 class _DeepLabHead(nn.Module):
     def __init__(self, n_classes):
         super(_DeepLabHead, self).__init__()
-        self.aspp = ASPP(2048, [12, 24, 36])
-        self.block = []
-        self.block.append(nn.Conv2d(in_channels=256, out_channels=256,
-                                    kernel_size=3, padding=1, bias=False))
-        self.block.append(nn.BatchNorm2d(num_features=256))
-        self.block.append(nn.ReLU(inplace=True))
-        self.block.append(nn.Dropout(0.1))
-        self.block.append(nn.Conv2d(in_channels=256, out_channels=n_classes,
-                                    kernel_size=1))
-        self.block = nn.Sequential(*self.block)
+        self.aspp = ASPP(2048, [6, 12, 18])     # output_stride = 16
+        # self.aspp = ASPP(2048, [12, 24, 36])  # output_stride = 8
+        self.block = nn.Sequential(
+            # nn.Conv2d(in_channels=256, out_channels=256,
+            #           kernel_size=3, padding=1, bias=False),
+            # nn.BatchNorm2d(num_features=256),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout(0.1),
+            nn.Conv2d(in_channels=256, out_channels=n_classes,
+                      kernel_size=1)
+        )
 
     def forward(self, x):
         out = self.aspp(x)
@@ -76,7 +76,7 @@ class ASPP(nn.Module):
                       kernel_size=1, bias=False),
             nn.BatchNorm2d(num_features=out_channels),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5)
+            # nn.Dropout(p=0.5)
         )
 
     def forward(self, x):
@@ -159,10 +159,14 @@ class ResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer1 = self._make_layer(block, 64, layers[0], stride=2)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=2, multi_grid=(1, 2, 4))
+
+        # for output_stride = 8
+        # self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
+        # self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1, multi_grid=1):
         downsample = None
