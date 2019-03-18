@@ -23,4 +23,4 @@ DeepLab-LargeFov|85.97%|62.76%|50.84%|lr=0.01<br>reduction='mean'
 DeepLab-MscLargeFov|86.07%|70.73%|54.51%|lr=0.01<br>reduction='mean'
 DeepLab-ASPP|85.67%|72.87%|55.13%|lr=0.01
 DeepLab-v3|79.77%|67.84%|46.94%|
-fcn32s|85.71%|59.66%|49.34%|lr=0.01<br>reduction='mean'
+fcn32s|85.71%|59.66%|49.34%|lr=0.01<br>reduction='mean'q
