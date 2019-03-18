@@ -4,6 +4,10 @@ import torchvision
 
 
 class SegNet(nn.Module):
+    """
+    official caffe implementation:
+    https://github.com/alexgkendall/SegNet-Tutorial/tree/master/Models
+    """
     def __init__(self, n_classes):
         super(SegNet, self).__init__()
         # conv1
@@ -169,15 +173,6 @@ class SegNet(nn.Module):
                     assert ll1.bias.size() == ll2.bias.size()
                     ll2.weight.data = ll1.weight.data
                     ll2.bias.data = ll1.bias.data
-
-        # for module in [self.features6, self.features7, self.features8,
-        #                self.features9, self.final]:
-        #     for m in module.children():
-        #         if isinstance(m, nn.Conv2d):
-        #             nn.init.kaiming_normal_(m.weight)
-        #         if isinstance(m, nn.BatchNorm2d):
-        #             nn.init.constant_(m.weight, 1)
-        #             nn.init.constant_(m.bias, 0.001)
 
     def forward(self, x):
         out = self.features1(x)
