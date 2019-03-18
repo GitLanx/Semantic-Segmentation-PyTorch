@@ -102,7 +102,8 @@ class Trainer:
             log = map(str, log)
             f.write(','.join(log) + '\n')
         
-        self.scheduler.step()
+        if self.scheduler:
+            self.scheduler.step()
 
         if self.epoch % self.val_epoch == 0:
             self.validate()

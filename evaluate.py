@@ -14,11 +14,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='deeplabv3')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/deeplabv3_20190317_141747/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model', type=str, default='segnet')
+    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190318_114942/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
-    parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images')
+    parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/CamVid',help='path to dataset')
+    parser.add_argument('--img_size', type=tuple, default=(352, 480), help='resize images')
     args = parser.parse_args()
 
     model_file = args.model_file
