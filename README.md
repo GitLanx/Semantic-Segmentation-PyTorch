@@ -18,7 +18,7 @@ model|acc|acc_cls|mean_iu|params
 SegNet(Maxunpooling)|87.44%|72.16%|58.96%|lr=0.01
 SegNet(Bilinear interpolation)|85.86%|71.95%|56.22%|lr=0.01
 SegNet(original)|88.6%|65.9%|50.2%
-UNet|85.17%|59.79%|48.70%|lr=0.01<br>reduction='mean'
+UNet|84.38%|62.80%|49.83%|lr=0.01
 DeepLab-LargeFov|85.97%|62.76%|50.84%|lr=0.01<br>reduction='mean'
 DeepLab-MscLargeFov|86.07%|70.73%|54.51%|lr=0.01<br>reduction='mean'
 DeepLab-ASPP|85.67%|72.87%|55.13%|lr=0.01
