@@ -7,6 +7,7 @@ import torch.nn.functional as F
 class DeepLabASPP(nn.Module):
     """
     official caffe training prototxt
+
     http://liangchiehchen.com/projects/DeepLabv2_vgg.html
     """
     def __init__(self, n_classes):
@@ -105,9 +106,6 @@ class DeepLabASPP(nn.Module):
         #     if isinstance(m, nn.Conv2d):
         #         nn.init.kaiming_normal_(m.weight)
         #         nn.init.constant_(m.bias, 0)
-
-        # nn.init.normal_(self.score.weight, std=0.01)
-        # nn.init.constant_(self.score.bias, 0)
 
     def forward(self, x):
         _, _, h, w = x.size()
