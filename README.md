@@ -19,8 +19,8 @@ SegNet(Maxunpooling)|87.44%|72.16%|58.96%|lr=0.01
 SegNet(Bilinear interpolation)|85.86%|71.95%|56.22%|lr=0.01
 SegNet(original)|88.6%|65.9%|50.2%
 UNet|84.38%|62.80%|49.83%|lr=0.01
-DeepLab-LargeFov|85.97%|62.76%|50.84%|lr=0.01<br>reduction='mean'
-DeepLab-MscLargeFov|86.07%|70.73%|54.51%|lr=0.01<br>reduction='mean'
-DeepLab-ASPP|85.67%|72.87%|55.13%|lr=0.01
+DeepLab-LargeFov|83.12%|68.52%|50.83%|lr=0.01(certainty)
+DeepLab-MscLargeFov|82.24%|72.16%|50.55%|lr=0.01
+DeepLab-ASPP|85.69%|72.85%|55.19%|lr=0.01(certainty)
 DeepLab-v3|79.77%|67.84%|46.94%|
 fcn32s|85.71%|59.66%|49.34%|lr=0.01<br>reduction='mean'
