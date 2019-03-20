@@ -4,11 +4,16 @@ from .SegNet import SegNet
 from .DeepLab_v1 import DeepLabLargeFOV, DeepLabMScLargeFOV
 from .DeepLab_v2 import DeepLabASPP
 from .DeepLab_v3 import DeepLabV3
+from .DeepLab_v3plus import DeepLabV3Plus
+from .Dilation8 import Dilation8
+from .PSPNet import PSPNet
 import torch
 from torchvision import models
 
 VALID_MODEL = ['fcn32s', 'fcn8s', 'unet', 'segnet', 'deeplab-largefov',
-               'deeplab-msclargefov', 'deeplab-aspp', 'deeplabv3']
+               'deeplab-msclargefov', 'deeplab-aspp', 'deeplabv3', 'deeplabv3+',
+               'dilation8',
+               'pspnet']
 
 def model_loader(model_name, n_classes, resume):
     model_name = model_name.lower()
@@ -28,6 +33,12 @@ def model_loader(model_name, n_classes, resume):
         model = DeepLabASPP(n_classes=n_classes)
     elif model_name == 'deeplabv3':
         model = DeepLabV3(n_classes=n_classes)
+    elif model_name == 'deeplabv3+':
+        model = DeepLabV3Plus(n_classes=n_classes)
+    elif model_name == 'dilation8':
+        model = Dilation8(n_classes=n_classes)
+    elif model_name == 'pspnet':
+        model = PSPNet(n_classes=n_classes)
     else:
         raise ValueError('Unsupported model, '
                          'valid models as follows:\n{}'.format(', '.join(VALID_MODEL)))
