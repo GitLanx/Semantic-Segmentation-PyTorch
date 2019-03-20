@@ -4,3 +4,4 @@ PyYAML==3.13
 scikit-image==0.14.1
 scipy==1.2.1
 tqdm==4.31.1
+pytz
