@@ -7,29 +7,29 @@ import torch
 from torch.utils.data import DataLoader
 import tqdm
 import Models
-from utils import visualize_segmentation, label_accuracy_score, get_tile_image
+from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter
 from Dataloader import get_loader
 
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='pspnet')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/pspnet_20190320_172958/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model', type=str, default='segnet')
+    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190322_142840/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
     parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=(321, 321), help='resize images')
+    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images')
+    parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
     args = parser.parse_args()
 
     model_file = args.model_file
     root = args.dataset
+    n_classes = args.n_classes
 
     loader = get_loader(args.dataset_type)
     val_loader = DataLoader(
-        loader(root, split='test', transform=True, img_size=args.img_size),
+        loader(root, n_classes=n_classes, split='test', img_size=args.img_size, pretrained=True),
         batch_size=1, shuffle=False, num_workers=4)
-
-    n_classes = val_loader.dataset.n_classes
 
     model, _, _ = Models.model_loader(args.model, n_classes, resume=None)
 
@@ -48,7 +48,8 @@ def main():
 
     print('==> Evaluating with {} dataset'.format(args.dataset_type))
     visualizations = []
-    label_trues, label_preds = [], []
+    metrics = runningScore(n_classes)
+
     for data, target in tqdm.tqdm(val_loader, total=len(val_loader), ncols=80, leave=False):
         data, target = data.to(device), target.to(device)
         score = model(data)
@@ -58,20 +59,29 @@ def main():
         lbl_true = target.data.cpu()
         for img, lt, lp in zip(imgs, lbl_true, lbl_pred):
             img, lt = val_loader.dataset.untransform(img, lt)
-            label_trues.append(lt)
-            label_preds.append(lp)
+            metrics.update(lt, lp)
             if len(visualizations) < 9:
                 viz = visualize_segmentation(
-                    lbl_pred=lp, lbl_true=lt, img=img, n_classes=n_classes)
+                    lbl_pred=lp, lbl_true=lt, img=img,
+                    n_classes=n_classes, dataloader=val_loader)
                 visualizations.append(viz)
-    metrics = label_accuracy_score(
-        label_trues, label_preds, n_class=n_classes)
-    metrics = np.array(metrics)
-    metrics *= 100
+    acc, acc_cls, mean_iu, fwavacc, cls_iu = metrics.get_scores()
     print('''Accuracy: {0}
-             Accuracy Class: {1}
-             Mean IoU: {2}
-             FWAV Accuracy: {3}'''.format(*metrics))
+Accuracy Class: {1}
+Mean IoU: {2}
+FWAV Accuracy: {3}'''.format(acc * 100,
+                             acc_cls * 100,
+                             mean_iu * 100,
+                             fwavacc * 100))
+    
+    class_name = val_loader.dataset.class_names
+    if class_name is not None:
+        for index, value in enumerate(cls_iu.values()):
+            print(class_name[index], value * 100)
+    else:
+        print("you don't specify class_names, use number of class instead")
+        for key, value in cls_iu.items():
+            print(key, value * 100)
 
     viz = get_tile_image(visualizations)
     # img = Image.fromarray(viz)

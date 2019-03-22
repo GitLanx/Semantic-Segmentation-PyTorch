@@ -2,6 +2,7 @@ import math
 import numpy as np
 import scipy.ndimage
 from PIL import Image
+import matplotlib.pyplot as plt
 import skimage
 import skimage.color
 import skimage.transform
@@ -40,6 +41,62 @@ def visualize_label_colormap(cmap):
 # -----------------------------------------------------------------------------
 # Evaluation
 # -----------------------------------------------------------------------------
+class runningScore(object):
+    def __init__(self, n_classes):
+        self.n_classes = n_classes
+        self.confusion_matrix = np.zeros((n_classes, n_classes))
+
+    def _fast_hist(self, label_true, label_pred, n_class):
+        mask = (label_true >= 0) & (label_true < n_class)
+        hist = np.bincount(
+            n_class * label_true[mask].astype(int) + label_pred[mask], minlength=n_class ** 2
+        ).reshape(n_class, n_class)
+        return hist
+
+    def update(self, label_trues, label_preds):
+        for lt, lp in zip(label_trues, label_preds):
+            self.confusion_matrix += self._fast_hist(lt.flatten(), lp.flatten(), self.n_classes)
+
+    def get_scores(self):
+        """Returns accuracy score evaluation result.
+            - overall accuracy
+            - mean accuracy
+            - mean IU
+            - fwavacc
+        """
+        hist = self.confusion_matrix
+        acc = np.diag(hist).sum() / hist.sum()
+        acc_cls = np.diag(hist) / hist.sum(axis=1)
+        acc_cls = np.nanmean(acc_cls)
+        iu = np.diag(hist) / (hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist))
+        mean_iu = np.nanmean(iu)
+        freq = hist.sum(axis=1) / hist.sum()
+        fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
+        cls_iu = dict(zip(range(self.n_classes), iu))
+
+        return acc, acc_cls, mean_iu, fwavacc, cls_iu
+
+    def reset(self):
+        self.confusion_matrix = np.zeros((self.n_classes, self.n_classes))
+
+
+class averageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 def _fast_hist(label_true, label_pred, n_class):
     mask = (label_true >= 0) & (label_true < n_class)
@@ -178,21 +235,18 @@ def get_tile_image(imgs, tile_shape=None, result_img=None, margin_color=None):
     return _tile_images(imgs, tile_shape, result_img)
 
 
-def label2rgb(lbl, img=None, n_labels=None, alpha=0.5):
+def label2rgb(lbl, dataloader, img=None, n_labels=None, alpha=0.5):
     if n_labels is None:
         n_labels = lbl.max() + 1  # +1 for bg_label 0
 
-    cmap = getpalette(n_labels)
-    cmap = np.array(cmap).reshape([-1, 3]).astype(np.uint8)
+    cmap = dataloader.dataset.getpalette()
+    # cmap = getpalette(n_labels)
+    # cmap = np.array(cmap).reshape([-1, 3]).astype(np.uint8)
 
     lbl_viz = cmap[lbl]
     lbl_viz[lbl == -1] = (0, 0, 0)  # unlabeled
 
     if img is not None:
-        # img_gray = Image.fromarray(img)
-        # img_gray.convert('L')
-        # img_gray.convert('RGB')
-        # img_gray = np.asarray(img_gray, dtype=np.uint8)
 
         # img_gray = skimage.color.rgb2gray(img)
         # img_gray = skimage.color.gray2rgb(img_gray)
@@ -201,7 +255,6 @@ def label2rgb(lbl, img=None, n_labels=None, alpha=0.5):
         lbl_viz = lbl_viz.astype(np.uint8)
 
     return lbl_viz
-
 
 def visualize_segmentation(**kwargs):
     """Visualize segmentation.
@@ -227,6 +280,7 @@ def visualize_segmentation(**kwargs):
     lbl_true = kwargs.pop('lbl_true', None)
     lbl_pred = kwargs.pop('lbl_pred', None)
     n_class = kwargs.pop('n_classes', None)
+    dataloader = kwargs.pop('dataloader', None)
     if kwargs:
         raise RuntimeError(
             'Unexpected keys in kwargs: {}'.format(kwargs.keys()))
@@ -238,20 +292,20 @@ def visualize_segmentation(**kwargs):
     viz_unlabeled = None
     if lbl_true is not None:
         mask_unlabeled = lbl_true == -1
-        lbl_true[mask_unlabeled] = 0
+        # lbl_true[mask_unlabeled] = 0
         viz_unlabeled = (
-            np.random.random((lbl_true.shape[0], lbl_true.shape[1], 3)) * 255
+            np.zeros((lbl_true.shape[0], lbl_true.shape[1], 3))
         ).astype(np.uint8)
-        if lbl_pred is not None:
-            lbl_pred[mask_unlabeled] = 0
+        # if lbl_pred is not None:
+        #     lbl_pred[mask_unlabeled] = 0
 
     vizs = []
 
     if lbl_true is not None:
         viz_trues = [
             img,
-            label2rgb(lbl_true, n_labels=n_class),
-            label2rgb(lbl_true, img, n_labels=n_class),
+            label2rgb(lbl_true, dataloader, n_labels=n_class),
+            label2rgb(lbl_true, dataloader, img, n_labels=n_class),
         ]
         viz_trues[1][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
         viz_trues[2][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
@@ -260,8 +314,8 @@ def visualize_segmentation(**kwargs):
     if lbl_pred is not None:
         viz_preds = [
             img,
-            label2rgb(lbl_pred, n_labels=n_class),
-            label2rgb(lbl_pred, img, n_labels=n_class),
+            label2rgb(lbl_pred, dataloader, n_labels=n_class),
+            label2rgb(lbl_pred, dataloader, img, n_labels=n_class),
         ]
         if mask_unlabeled is not None and viz_unlabeled is not None:
             viz_preds[1][mask_unlabeled] = viz_unlabeled[mask_unlabeled]

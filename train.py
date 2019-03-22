@@ -18,23 +18,23 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='deeplabv3+', help='model to train for')
+    parser.add_argument('--model', type=str, default='deeplab-largefov', help='model to train for')
     parser.add_argument('--epochs', type=int, default=100, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
-    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images to proper size')
+    parser.add_argument('--img_size', type=tuple, default=(321, 321), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='camvid', help='choose which dataset to use')
     parser.add_argument('--train_root', type=str, default='D:/Datasets/CamVid', help='path to train.txt')
-    parser.add_argument('--val_root', type=str, help='path to val.txt')
     parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
-    parser.add_argument('--weight-decay', type=float, default=0.0001, help='weight decay')
+    parser.add_argument('--lr_policy', type=str, default='step', help='learning rate policy')
+    parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
     parser.add_argument('--lr_decay_step', type=float, default=20, help='step size for step learning policy')
     parser.add_argument('--lr_power', type=int, default=0.9, help='power parameter for poly learning policy')
+    parser.add_argument('--pretrained', type=bool, default=True, help='whether to use pretrained models')
     args = parser.parse_args()
 
     now = datetime.datetime.now()
@@ -57,10 +57,10 @@ def main():
     loader = get_loader(args.dataset_type)
 
     train_loader = DataLoader(
-        loader(root, split='train', transform=True, img_size=args.img_size),
+        loader(root, n_classes=args.n_classes, split='train', img_size=args.img_size, pretrained=args.pretrained),
         batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(
-        loader(root, split='val', transform=True, img_size=args.img_size),
+        loader(root, n_classes=args.n_classes, split='val', img_size=args.img_size, pretrained=args.pretrained),
         batch_size=1, shuffle=False, num_workers=4)
 
     # 2. model

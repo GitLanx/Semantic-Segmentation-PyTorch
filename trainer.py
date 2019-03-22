@@ -2,7 +2,7 @@ import datetime
 import os
 import os.path as osp
 import shutil
-from utils import label_accuracy_score, visualize_segmentation, get_tile_image
+from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter
 import numpy as np
 import pytz
 import scipy.misc
@@ -56,8 +56,10 @@ class Trainer:
 
     def train_epoch(self):
         self.model.train()
+        train_metrics = runningScore(self.n_classes)
+        train_loss_meter = averageMeter()
 
-        label_trues, label_preds = [], []
+        # label_trues, label_preds = [], []
         for data, target in tqdm.tqdm(
                 self.train_loader, total=len(self.train_loader),
                 desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
@@ -75,6 +77,8 @@ class Trainer:
             loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
             # loss /= len(data)
             loss_data = loss.data.item()
+            train_loss_meter.update(loss_data)
+
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while training')
             loss.backward()
@@ -83,22 +87,25 @@ class Trainer:
             # metrics = []
             lbl_pred = score.data.max(1)[1].cpu().numpy()
             lbl_true = target.data.cpu().numpy()
-            for lt, lp in zip(lbl_true, lbl_pred):
-                label_trues.append(lt)
-                label_preds.append(lp)
-
-            metrics = label_accuracy_score(
-                    label_trues, label_preds, self.n_classes)
+            # for lt, lp in zip(lbl_true, lbl_pred):
+                # label_trues.append(lt)
+                # label_preds.append(lp)
+            train_metrics.update(lbl_true, lbl_pred)
+            # metrics = label_accuracy_score(
+            #         label_trues, label_preds, self.n_classes)
 
             # metrics.append((acc, acc_cls, mean_iu, fwavacc))
             # metrics = np.mean(metrics, axis=0)
+
+        acc, acc_cls, mean_iou, fwavacc, _ = train_metrics.get_scores()
+        metrics = [acc, acc_cls, mean_iou, fwavacc]
 
         with open(osp.join(self.out, 'log.csv'), 'a') as f:
             elapsed_time = (
                 datetime.datetime.now(pytz.timezone('UTC')) -
                 self.timestamp_start).total_seconds()
             log = [self.epoch] + [loss_data] + \
-                list(metrics) + [''] * 5 + [elapsed_time]
+                metrics + [''] * 5 + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
         
@@ -112,9 +119,12 @@ class Trainer:
 
     def validate(self):
 
-        val_loss = 0
+        # val_loss = 0
         visualizations = []
-        label_trues, label_preds = [], []
+        # label_trues, label_preds = [], []
+        val_metrics = runningScore(self.n_classes)
+        val_loss_meter = averageMeter()
+
         with torch.no_grad():
             self.model.eval()
             for data, target in tqdm.tqdm(
@@ -125,41 +135,47 @@ class Trainer:
 
                 score = self.model(data)
 
-                loss = F.cross_entropy(score, target, reduction='sum', ignore_index=-1)
+                loss = F.cross_entropy(score, target, reduction='mean', ignore_index=-1)
                 loss_data = loss.data.item()
                 if np.isnan(loss_data):
                     raise ValueError('loss is nan while validating')
-                val_loss += loss_data / len(data)
+                # val_loss += loss_data / len(data)
+                val_loss_meter.update(loss_data)
 
                 imgs = data.data.cpu()
                 lbl_pred = score.data.max(1)[1].cpu().numpy()
                 lbl_true = target.data.cpu()
                 for img, lt, lp in zip(imgs, lbl_true, lbl_pred):
                     img, lt = self.val_loader.dataset.untransform(img, lt)
-                    label_trues.append(lt)
-                    label_preds.append(lp)
+                    # label_trues.append(lt)
+                    # label_preds.append(lp)
+                    val_metrics.update(lt, lp)
                     if len(visualizations) < 9:
                         viz = visualize_segmentation(
                             lbl_pred=lp, lbl_true=lt, img=img,
-                            n_classes=self.n_classes)
+                            n_classes=self.n_classes, dataloader=self.train_loader)
                         visualizations.append(viz)
-        metrics = label_accuracy_score(
-            label_trues, label_preds, self.n_classes)
+        # metrics = label_accuracy_score(
+        #     label_trues, label_preds, self.n_classes)
+
+        acc, acc_cls, mean_iou, fwavacc, _ = val_metrics.get_scores()
+        metrics = [acc, acc_cls, mean_iou, fwavacc]
 
         out = osp.join(self.out, 'visualization_viz')
         if not osp.exists(out):
             os.makedirs(out)
-        out_file = osp.join(out, 'epoch%08d.jpg' % self.epoch)
+        # out_file = osp.join(out, 'epoch%08d.jpg' % self.epoch)
+        out_file = osp.join(out, 'epoch{:0>5d}.jpg'.format(self.epoch))
         scipy.misc.imsave(out_file, get_tile_image(visualizations))
 
-        val_loss /= len(self.val_loader)
+        # val_loss /= len(self.val_loader)
 
         with open(osp.join(self.out, 'log.csv'), 'a') as f:
             elapsed_time = (
                 datetime.datetime.now(pytz.timezone('UTC')) -
                 self.timestamp_start).total_seconds()
             log = [self.epoch] + [''] * 5 + \
-                  [val_loss] + list(metrics) + [elapsed_time]
+                  [val_loss_meter.avg] + metrics + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
 
@@ -177,6 +193,9 @@ class Trainer:
         if is_best:
             shutil.copy(osp.join(self.out, 'checkpoint.pth.tar'),
                         osp.join(self.out, 'model_best.pth.tar'))
+
+        val_loss_meter.reset()
+        val_metrics.reset()
 
     def train(self):
         for epoch in tqdm.trange(self.epoch, self.epochs + 1,
