@@ -1,14 +1,14 @@
-from .loader import BaseLoader
+from .custom_loader import CustomLoader
 from .voc_loader import VOCLoader, SBDLoader, VOC11Val
 from .citys_loader import CityscapesLoader
 from .camvid_loader import CamVidLoader
 
-VALID_DATASET = ['voc', 'cityscapes', 'sbd', 'camvid']
+VALID_DATASET = ['voc', 'cityscapes', 'sbd', 'voc11', 'camvid']
 
 
 def get_loader(dataset_type):
     if dataset_type == '':
-        return BaseLoader
+        return CustomLoader
     elif dataset_type == 'voc':
         return VOCLoader
     elif dataset_type == 'cityscapes':
@@ -21,5 +21,5 @@ def get_loader(dataset_type):
         return CamVidLoader
     else:
         raise ValueError('Unsupported dataset, '
-                         'supported datasets as follows:\n{}\n'
+                         'valid datasets as follows:\n{}\n'
                          'voc11 only for evaluation'.format(', '.join(VALID_DATASET)))

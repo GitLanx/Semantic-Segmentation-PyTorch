@@ -2,15 +2,29 @@ import os
 import torch
 import numpy as np
 from PIL import Image
+from .baseloader import BaseLoader
 from collections import namedtuple
 from torch.utils import data
 from torchvision import transforms
 
 
-class CityscapesLoader(data.Dataset):
-    """cityscapesLoader
-    Adapted from:
-    https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/loader/cityscapes_loader.py
+class CityscapesLoader(BaseLoader):
+    """Cityscapes dataset loader.
+    Parameters
+    ----------
+      root: path to cityscapes dataset.
+        for directory:
+        --VOCdevkit--VOC2012---ImageSets
+                             |-JPEGImages
+                             |-   ...
+        root should be xxx/VOCdevkit/VOC2012
+      n_classes: number of classes, default 19.
+      split: choose subset of dataset, 'train','val' or 'trainval'.
+      img_size: scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation, default 255.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
     """
 
     CityscapesClass = namedtuple('CityscapesClass', ['name', 'id', 'train_id',
@@ -58,60 +72,25 @@ class CityscapesLoader(data.Dataset):
     def __init__(
         self,
         root,
+        n_classes=19,
         split="train",
-        transform=False,
         img_size=None,
-        augmentations=None
-    ):
-        """__init__
-        :param root:
-        :param split:
-        :param is_transform:
-        :param img_size:
-        :param augmentations
-        """
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.n_classes = 19
-        self.img_size = img_size
+        augmentations=None,
+        ignore_index=255,
+        class_weight=None,
+        pretrained=False
+        ):
+        super(CityscapesLoader, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
+
         self.images_dir = os.path.join(self.root, 'leftImg8bit', split)
         self.labels_dir = os.path.join(self.root, 'gtFine', split)
         self.images = []
         self.labels = []
-        self.tf = transforms.Compose(
-            [transforms.ToTensor()]
-        )
-        self.untf = transforms.Compose(
-            [transforms.ToPILImage()]
-        )
+
         self.void_classes = [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, -1]
         self.valid_classes = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 26,
                               27, 28, 31, 32, 33]
         self.class_map = dict(zip(self.valid_classes, range(self.n_classes)))
-
-        self.cityspallete = [
-            128, 64, 128,
-            244, 35, 232,
-            70, 70, 70,
-            102, 102, 156,
-            190, 153, 153,
-            153, 153, 153,
-            250, 170, 30,
-            220, 220, 0,
-            107, 142, 35,
-            152, 251, 152,
-            0, 130, 180,
-            220, 20, 60,
-            255, 0, 0,
-            0, 0, 142,
-            0, 0, 70,
-            0, 60, 100,
-            0, 80, 100,
-            0, 0, 230,
-            119, 11, 32,
-        ]
 
         for city in os.listdir(self.images_dir):
             img_dir = os.path.join(self.images_dir, city)
@@ -125,60 +104,68 @@ class CityscapesLoader(data.Dataset):
         print(f"Found {len(self.images)} {split} images")
 
     def __len__(self):
-        """__len__"""
         return len(self.images)
 
     def __getitem__(self, index):
-        """__getitem__
-        :param index:
-        """
         img = Image.open(self.images[index]).convert('RGB')
         lbl = Image.open(self.labels[index])
 
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
 
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
 
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
-
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
     def transform(self, img, lbl):
-        """transform
-        :param img:
-        :param lbl:
-        """
         img = self.tf(img)
+
         lbl = np.array(lbl, dtype=np.int32)
         lbl = self.encode_segmap(lbl)
-
         lbl = torch.from_numpy(lbl).long()
-
         return img, lbl
 
+    def getpalette(self):
+        return np.array([
+            [128, 64, 128],
+            [244, 35, 232],
+            [70, 70, 70],
+            [102, 102, 156],
+            [190, 153, 153],
+            [153, 153, 153],
+            [250, 170, 30],
+            [220, 220, 0],
+            [107, 142, 35],
+            [152, 251, 152],
+            [0, 130, 180],
+            [220, 20, 60],
+            [255, 0, 0],
+            [0, 0, 142],
+            [0, 0, 70],
+            [0, 60, 100],
+            [0, 80, 100],
+            [0, 0, 230],
+            [119, 11, 32]
+        ])
+
     def decode_segmap(self, lbl):
-        # r = temp.copy()
-        # g = temp.copy()
-        # b = temp.copy()
-        # for l in range(0, self.n_classes):
-        #     r[temp == l] = self.label_colours[l][0]
-        #     g[temp == l] = self.label_colours[l][1]
-        #     b[temp == l] = self.label_colours[l][2]
-        #
-        # rgb = np.zeros((temp.shape[0], temp.shape[1], 3))
-        # rgb[:, :, 0] = r / 255.0
-        # rgb[:, :, 1] = g / 255.0
-        # rgb[:, :, 2] = b / 255.0
-        # lbl = lbl[np.newaxis, ...]
-        # lbl = np.transpose(lbl, [1, 2, 0]).astype('int32')
-        # lbl = self.untf(lbl)
-        lbl = Image.fromarray(lbl.astype('uint8'))
-        lbl.putpalette(self.cityspallete)
-        return lbl
+        label_colours = self.getpalette()
+        r = label_mask.copy()
+        g = label_mask.copy()
+        b = label_mask.copy()
+        for ll in range(0, self.n_classes):
+            r[label_mask == ll] = label_colours[ll, 0]
+            g[label_mask == ll] = label_colours[ll, 1]
+            b[label_mask == ll] = label_colours[ll, 2]
+        rgb = np.zeros((label_mask.shape[0], label_mask.shape[1], 3))
+        rgb[:, :, 0] = r / 255.0
+        rgb[:, :, 1] = g / 255.0
+        rgb[:, :, 2] = b / 255.0
+
+        return rgb
 
     def encode_segmap(self, mask):
         # Put all void classes to -1

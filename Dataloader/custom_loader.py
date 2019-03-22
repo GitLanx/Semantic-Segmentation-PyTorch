@@ -2,44 +2,48 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-
+from .baseloader import BaseLoader
 from PIL import Image
-from torch.utils import data
 from torchvision import transforms
 
 
-class BaseLoader(data.Dataset):
-    '''Adapted from:
-    https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/loader/pascal_voc_loader.py
-    https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/datasets/voc.py
-    '''
+class CustomLoader(BaseLoader):
+    """Custom dataset loader.
+    Parameters
+    ----------
+      root: path to custom dataset, with train.txt and val.txt together.
+        i.e., -----dataset
+                |--train.txt
+                |--val.txt
+      n_classes: number of classes.
+      split: choose subset of dataset, 'train','val' or 'test'.
+      img_size: scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
+    """
+    # specify class_names if necessary
+    class_names = None
+
     def __init__(
         self,
         root,
+        n_classes,
         split="train",
-        transform=False,
         img_size=None,
         augmentations=None,
-        n_classes=14,
         ignore_index=None,
-    ):
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.img_size = img_size
-        self.ignore_index = ignore_index
+        class_weight=None,
+        pretrained=False
+        ):
+        super(CustomLoader, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
 
         path = os.path.join(self.root, split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip().split() for file_name in f]
 
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            ]
-        )
+        print(f"Found {len(self.file_list)} {split} images")
 
     def __len__(self):
         return len(self.file_list)
@@ -48,28 +52,38 @@ class BaseLoader(data.Dataset):
         img_name = self.file_list[index][0]
         lbl_name = self.file_list[index][1]
 
-        img = Image.open(os.path.join(self.root, img_name))
+        img = Image.open(os.path.join(self.root, img_name)).convert('RGB')
         lbl = Image.open(os.path.join(self.root, lbl_name))
 
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
 
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
 
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
-    def transform(self, img, lbl):
-        img = self.tf(img)
-        lbl = np.array(lbl, dtype=np.int32)
-        if self.ignore_index is not None:
-            lbl[lbl == self.ignore_index] = 255
-
-        lbl = torch.from_numpy(lbl).long()
-        return img, lbl
+    def getpalette(self):
+        """for custom palette, if not specified, use pascal voc palette by default.
+        """
+        n = self.n_classes
+        palette = [0]*(n*3)
+        for j in range(0, n):
+            lab = j
+            palette[j*3+0] = 0
+            palette[j*3+1] = 0
+            palette[j*3+2] = 0
+            i = 0
+            while (lab > 0):
+                palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+                palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+                palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+                i = i + 1
+                lab >>= 3
+        palette = np.array(palette).reshape([-1, 3]).astype(np.uint8)
+        return palette
 
     def encode_segmap(self, mask):
         """Encode segmentation label images as pascal classes

@@ -4,11 +4,23 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from torch.utils import data
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from .baseloader import BaseLoader
 
-
-class CamVidLoader(data.Dataset):
+class CamVidLoader(BaseLoader):
+    """CamVid dataset loader.
+    Parameters
+    ----------
+      root: path to CamVid dataset.
+      n_classes: number of classes, default 11.
+      split: choose subset of dataset, 'train','val' or 'test'.
+      img_size: a list or a tuple, scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation, default 11.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
+    """
     class_names = np.array([
         'sky',
         'building',
@@ -27,40 +39,24 @@ class CamVidLoader(data.Dataset):
     def __init__(
         self,
         root,
-        split="train",
-        transform=False,
+        n_classes=11,
+        split='train',
         img_size=None,
-        augmentations=None
-    ):
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.n_classes = 11
-        self.img_size = img_size
+        augmentations=None,
+        ignore_index=11,
+        class_weight=None,
+        pretrained=False
+        ):
+        super(CamVidLoader, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
 
         path = os.path.join(self.root, self.split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
 
-        self.mean = torch.tensor([0.485, 0.456, 0.406])
-        self.std = torch.tensor([0.229, 0.224, 0.225])
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
-            ]
-        )
-        self.untf = transforms.Compose(
-            [
-                transforms.Normalize((-self.mean / self.std).tolist(),
-                                     (1.0 / self.std).tolist()),
-            ]
-        )
-
         self.class_weight = [0.2595, 0.1826, 4.5640, 0.1417,
                              0.9051, 0.3826, 9.6446, 1.8418,
                              0.6823 ,6.2478, 7.3614]
+
         print(f"Found {len(self.file_list)} {split} images")
 
     def __len__(self):
@@ -79,36 +75,16 @@ class CamVidLoader(data.Dataset):
 
         img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
+
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
-    def transform(self, img, lbl):
-        img = self.tf(img)
-        lbl = np.array(lbl, dtype=np.int32)
-        lbl[lbl == 11] = -1
-        lbl = torch.from_numpy(lbl).long()
-        return img, lbl
-
-    def untransform(self, img, lbl):
-        img = self.untf(img)
-        img = img.numpy()
-        img = img.transpose(1, 2, 0)
-        img = img * 255
-        img = img.astype(np.uint8)
-        lbl = lbl.numpy()
-        return img, lbl
-
-    def get_label_colors(self):
-        """Load the mapping that associates pascal classes with label colors
-        Returns:
-            np.ndarray with dimensions (21, 3)
-        """
+    def getpalette(self):
         return np.asarray(
             [
                 [128, 128, 128],
@@ -122,7 +98,6 @@ class CamVidLoader(data.Dataset):
                 [64, 0, 128],
                 [64, 64, 0],
                 [0, 128, 192],
-                [0, 0, 0],
             ]
         )
 
@@ -137,7 +112,7 @@ class CamVidLoader(data.Dataset):
         """
         mask = mask.astype(int)
         label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int16)
-        for ii, label in enumerate(self.get_label_colors()):
+        for ii, label in enumerate(self.getpalette()):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
@@ -152,7 +127,7 @@ class CamVidLoader(data.Dataset):
         Returns:
             (np.ndarray, optional): the resulting decoded color image.
         """
-        label_colours = self.get_label_colors()
+        label_colours = self.getpalette()
         r = label_mask.copy()
         g = label_mask.copy()
         b = label_mask.copy()
@@ -167,20 +142,30 @@ class CamVidLoader(data.Dataset):
         return rgb
 
 # Leave code for debugging purposes
-# import ptsemseg.augmentations as aug
 if __name__ == '__main__':
-    local_path = r'E:\dataset\VOC2012'
-    bs = 4
-    # augs = aug.Compose([aug.RandomRotate(10), aug.RandomHorizontallyFlip()])
-    dst = CamVidLoader(root=local_path, is_transform=True)
-    trainloader = data.DataLoader(dst, batch_size=bs)
-    for i, data in enumerate(trainloader):
-        imgs, labels = data
+    root = r'D:/Datasets/CamVid'
+    batch_size = 4
+    loader = CamVidLoader(root=root, img_size=(320, 320))
+    test_loader = DataLoader(loader, batch_size=batch_size)
+    for imgs, labels in enumerate(test_loader):
         imgs = imgs.numpy()[:, ::-1, :, :]
         imgs = np.transpose(imgs, [0,2,3,1])
-        f, axarr = plt.subplots(bs, 2)
-        for j in range(bs):
-            axarr[j][0].imshow(imgs[j])
-            axarr[j][1].imshow(dst.decode_segmap(labels.numpy()[j]))
+        labels = labels.numpy()
+
+        fig, axes = plt.subplots(batch_size, 2)
+        for i in range(batch_size):
+            axes[i][0].imshow(imgs[i])
+
+            mask_unlabeled = labels[i] == -1
+            viz_unlabeled = (
+                np.zeros((labels[i].shape[1], labels[i].shape[2], 3))
+            ).astype(np.uint8)
+            palette = loader.dataset.getpalette()
+            lbl_viz = palette[labels[i]]
+            lbl_viz[labels[i] == -1] = (0, 0, 0)
+            lbl_viz[i][mask_unlabeled] = viz_unlabeled[mask_unlabeled]
+
+            axes[i][1].imshow(lbl_viz[i])
         plt.show()
+        break
 

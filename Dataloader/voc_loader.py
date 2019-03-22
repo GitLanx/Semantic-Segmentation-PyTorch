@@ -4,74 +4,55 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
+from .baseloader import BaseLoader
 import torch
 from torch.utils import data
 from torchvision import transforms
 
 
-class VOCLoader(data.Dataset):
-    '''Adapted from:
-    https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/loader/pascal_voc_loader.py
-    https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/datasets/voc.py
-    '''
+class VOCLoader(BaseLoader):
+    """PASCAL VOC dataset loader.
+    Parameters
+    ----------
+      root: path to pascal voc dataset.
+        for directory:
+        --VOCdevkit--VOC2012---ImageSets
+                             |-JPEGImages
+                             |-   ...
+        root should be xxx/VOCdevkit/VOC2012
+      n_classes: number of classes, default 21.
+      split: choose subset of dataset, 'train','val' or 'trainval'.
+      img_size: scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation, default 255.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
+    """
     class_names = np.array([
-        'background',
-        'aeroplane',
-        'bicycle',
-        'bird',
-        'boat',
-        'bottle',
-        'bus',
-        'car',
-        'cat',
-        'chair',
-        'cow',
-        'diningtable',
-        'dog',
-        'horse',
-        'motorbike',
-        'person',
-        'potted plant',
-        'sheep',
-        'sofa',
-        'train',
+        'background', 'aeroplane', 'bicycle',
+        'bird', 'boat', 'bottle', 'bus',
+        'car', 'cat', 'chair', 'cow', 'diningtable',
+        'dog', 'horse', 'motorbike', 'person',
+        'potted plant', 'sheep', 'sofa', 'train',
         'tv/monitor',
     ])
 
     def __init__(
         self,
         root,
+        n_classes=21,
         split="train",
-        transform=False,
         img_size=None,
-        augmentations=None
-    ):
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.n_classes = 21
-        self.files = collections.defaultdict(list)
-        self.img_size = img_size
+        augmentations=None,
+        ignore_index=255,
+        class_weight=None,
+        pretrained=False
+        ):
+        super(VOCLoader, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
 
         path = os.path.join(self.root, "ImageSets/Segmentation", split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
-
-        self.mean = torch.tensor([0.485, 0.456, 0.406])
-        self.std = torch.tensor([0.229, 0.224, 0.225])
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
-            ]
-        )
-        self.untf = transforms.Compose(
-            [
-                transforms.Normalize((-self.mean / self.std).tolist(),
-                                     (1.0 / self.std).tolist()),
-            ]
-        )
 
         print(f"Found {len(self.file_list)} {split} images")
 
@@ -84,61 +65,32 @@ class VOCLoader(data.Dataset):
         lbl_path = os.path.join(self.root, "SegmentationClass", img_name + ".png")
         img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
+
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
-    def transform(self, img, lbl):
-        img = self.tf(img)
-        lbl = np.array(lbl, dtype=np.int32)
-        lbl[lbl == 255] = -1
-        lbl = torch.from_numpy(lbl).long()
-        return img, lbl
-
-    def untransform(self, img, lbl):
-        img = self.untf(img)
-        img = img.numpy()
-        img = img.transpose(1, 2, 0)
-        img = img * 255
-        img = img.astype(np.uint8)
-        lbl = lbl.numpy()
-        return img, lbl
-
-    def get_label_colors(self):
-        """Load the mapping that associates pascal classes with label colors
-        Returns:
-            np.ndarray with dimensions (21, 3)
-        """
-        return np.asarray(
-            [
-                [0, 0, 0],
-                [128, 0, 0],
-                [0, 128, 0],
-                [128, 128, 0],
-                [0, 0, 128],
-                [128, 0, 128],
-                [0, 128, 128],
-                [128, 128, 128],
-                [64, 0, 0],
-                [192, 0, 0],
-                [64, 128, 0],
-                [192, 128, 0],
-                [64, 0, 128],
-                [192, 0, 128],
-                [64, 128, 128],
-                [192, 128, 128],
-                [0, 64, 0],
-                [128, 64, 0],
-                [0, 192, 0],
-                [128, 192, 0],
-                [0, 64, 128],
-            ]
-        )
+    def getpalette(self):
+        n = self.n_classes
+        palette = [0]*(n*3)
+        for j in range(0, n):
+            lab = j
+            palette[j*3+0] = 0
+            palette[j*3+1] = 0
+            palette[j*3+2] = 0
+            i = 0
+            while (lab > 0):
+                palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+                palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+                palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+                i = i + 1
+                lab >>= 3
+        palette = np.array(palette).reshape([-1, 3]).astype(np.uint8)
+        return palette
 
     def encode_segmap(self, mask):
         """Encode segmentation label images as pascal classes
@@ -151,7 +103,7 @@ class VOCLoader(data.Dataset):
         """
         mask = mask.astype(int)
         label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int16)
-        for ii, label in enumerate(self.get_label_colors()):
+        for ii, label in enumerate(self.getpalette()):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
@@ -166,7 +118,7 @@ class VOCLoader(data.Dataset):
         Returns:
             (np.ndarray, optional): the resulting decoded color image.
         """
-        label_colours = self.get_label_colors()
+        label_colours = self.getpalette()
         r = label_mask.copy()
         g = label_mask.copy()
         b = label_mask.copy()
@@ -178,49 +130,57 @@ class VOCLoader(data.Dataset):
         rgb[:, :, 0] = r / 255.0
         rgb[:, :, 1] = g / 255.0
         rgb[:, :, 2] = b / 255.0
-        if plot:
-            plt.imshow(rgb)
-            plt.show()
-        else:
-            return rgb
 
-class SBDLoader(VOCLoader):
+        return rgb
+
+class SBDLoader(BaseLoader):
+    """Semantic Boundaries Dataset(SBD) dataset loader.
+    Parameters
+    ----------
+      root: path to SBD dataset.
+        for directory:
+        --benchmark_RELEASE--dataset---img
+                                     |-cls
+                                     |-train.txt
+                                     |-  ...
+        root should be xxx/benchmark_RELEASE
+      n_classes: number of classes, default 21.
+      split: choose subset of dataset, 'train' or 'val'.
+      img_size: scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation, default 255.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
+    """
+    class_names = np.array([
+        'background', 'aeroplane', 'bicycle',
+        'bird', 'boat', 'bottle', 'bus',
+        'car', 'cat', 'chair', 'cow', 'diningtable',
+        'dog', 'horse', 'motorbike', 'person',
+        'potted plant', 'sheep', 'sofa', 'train',
+        'tv/monitor',
+    ])
     def __init__(
         self,
         root,
-        split='train',
-        transform=False,
+        n_classes=21,
+        split="train",
         img_size=None,
-        augmentations=None
-    ):
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.n_classes = 21
-        self.files = collections.defaultdict(list)
-        self.img_size = img_size
+        augmentations=None,
+        ignore_index=255,
+        class_weight=None,
+        pretrained=False
+        ):
+        super(SBDLoader, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
 
         path = os.path.join(self.root, 'dataset', split + ".txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
 
-        self.mean = torch.tensor([0.485, 0.456, 0.406])
-        self.std = torch.tensor([0.229, 0.224, 0.225])
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
-            ]
-        )
-        self.untf = transforms.Compose(
-            [
-                transforms.Normalize((-self.mean / self.std).tolist(),
-                                     (1.0 / self.std).tolist()),
-            ]
-        )
-
         print(f"Found {len(self.file_list)} {split} images")
+
+    def __len__(self):
+        return len(self.file_list)
 
     def __getitem__(self, index):
         img_name = self.file_list[index]
@@ -231,52 +191,64 @@ class SBDLoader(VOCLoader):
         lbl = loadmat(lbl_path)
         lbl = lbl['GTcls'][0]['Segmentation'][0].astype(np.int32)
         lbl = Image.fromarray(lbl)
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
+
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
+    def getpalette(self):
+        n = self.n_classes
+        palette = [0]*(n*3)
+        for j in range(0, n):
+            lab = j
+            palette[j*3+0] = 0
+            palette[j*3+1] = 0
+            palette[j*3+2] = 0
+            i = 0
+            while (lab > 0):
+                palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+                palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+                palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+                i = i + 1
+                lab >>= 3
+        palette = np.array(palette).reshape([-1, 3]).astype(np.uint8)
+        return palette
 
-class VOC11Val(VOCLoader):
+class VOC11Val(BaseLoader):
+    """load PASCAL VOC 2012 dataset, but only use seg11valid.txt for evaluation.
+    Parameters
+    ----------
+      root: path to PASCAL VOC 2012 dataset.
+      n_classes: number of classes, default 21.
+      split: only 'seg11valid' is available.
+      img_size: scale image to proper size.
+      augmentations: whether to perform augmentation.
+      ignore_index: ingore_index will be ignored in training phase and evaluation, default 255.
+      class_weight: useful in unbalanced datasets.
+      pretrained: whether to use pretrained models
+    """
     def __init__(
         self,
         root,
-        split='val',
-        transform=False,
+        n_classes=21,
+        split="seg11valid",
         img_size=None,
-        augmentations=None
-    ):
-        self.root = root
-        self.split = split
-        self.is_transform = transform
-        self.augmentations = augmentations
-        self.n_classes = 21
-        self.img_size = img_size
+        augmentations=None,
+        ignore_index=255,
+        class_weight=None,
+        pretrained=False
+        ):
+        super(VOC11Val, self).__init__(root, n_classes, split, img_size, augmentations, ignore_index, class_weight, pretrained)
 
         current_path = os.path.realpath(__file__)
 
         path = os.path.join(current_path[:-13] + "seg11valid.txt")
         with open(path, "r") as f:
             self.file_list = [file_name.rstrip() for file_name in f]
-
-        self.mean = torch.tensor([0.485, 0.456, 0.406])
-        self.std = torch.tensor([0.229, 0.224, 0.225])
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean.tolist(), self.std.tolist()),
-            ]
-        )
-        self.untf = transforms.Compose(
-            [
-                transforms.Normalize((-self.mean / self.std).tolist(),
-                                     (1.0 / self.std).tolist()),
-            ]
-        )
 
         print(f"Found {len(self.file_list)} {split} images")
 
@@ -287,13 +259,13 @@ class VOC11Val(VOCLoader):
         img = Image.open(img_path).convert('RGB')
         lbl = Image.open(lbl_path)
 
-        if self.img_size is not None:
+        if self.img_size:
             img = img.resize((self.img_size[1], self.img_size[0]), Image.BILINEAR)
             lbl = lbl.resize((self.img_size[1], self.img_size[0]), Image.NEAREST)
-        if self.augmentations is not None:
+        if self.augmentations:
             img, lbl = self.augmentations(img, lbl)
-        if self.is_transform:
-            img, lbl = self.transform(img, lbl)
+
+        img, lbl = self.transform(img, lbl)
         return img, lbl
 
 # Leave code for debugging purposes
