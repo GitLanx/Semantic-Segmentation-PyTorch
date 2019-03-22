@@ -5,7 +5,8 @@ import torchvision
 
 class SegNet(nn.Module):
     """
-    official caffe implementation:
+    Adapted from official caffe implementation:
+
     https://github.com/alexgkendall/SegNet-Tutorial/tree/master/Models
     """
     def __init__(self, n_classes):

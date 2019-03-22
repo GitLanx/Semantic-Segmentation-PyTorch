@@ -5,15 +5,16 @@ import torch.nn.functional as F
 
 
 class DeepLabLargeFOV(nn.Module):
-    """
-    official caffe training prototxt  
-    http://www.cs.jhu.edu/~alanlab/ccvl/DeepLab-LargeFOV/train.prototxt  
-    (1) input dimension equal to  
-    n = 32 * k - 31, e.g., 321 (for k = 11)  
-    Dimension after pooling w. subsampling:  
-    (16 * k - 15); (8 * k - 7); (4 * k - 3); (2 * k - 1); (k).  
-    For k = 11, these translate to  
-          161;     81;     41;      21;11
+    """official caffe training prototxt
+
+    http://www.cs.jhu.edu/~alanlab/ccvl/DeepLab-LargeFOV/train.prototxt
+
+     input dimension equal to
+     n = 32 * k - 31, e.g., 321 (for k = 11)
+     Dimension after pooling w. subsampling:
+     (16 * k - 15); (8 * k - 7); (4 * k - 3); (2 * k - 1); (k).
+     For k = 11, these translate to  
+               161;          81;          41;          21;  11
     """
     def __init__(self, n_classes):
         super(DeepLabLargeFOV, self).__init__()
@@ -92,15 +93,16 @@ class DeepLabLargeFOV(nn.Module):
 
 
 class DeepLabMScLargeFOV(nn.Module):
-    """
-    official caffe training prototxt  
-    http://www.cs.jhu.edu/~alanlab/ccvl/DeepLab-MSc-LargeFOV/train.prototxt  
-    (1) input dimension equal to  
-    n = 32 * k - 31, e.g., 321 (for k = 11)  
-    Dimension after pooling w. subsampling:  
-    (16 * k - 15); (8 * k - 7); (4 * k - 3); (2 * k - 1); (k).  
-    For k = 11, these translate to  
-          161;     81;     41;      21;11
+    """official caffe training prototxt
+
+    http://www.cs.jhu.edu/~alanlab/ccvl/DeepLab-MSc-LargeFOV/train.prototxt
+
+     input dimension equal to
+     n = 32 * k - 31, e.g., 321 (for k = 11)
+     Dimension after pooling w. subsampling:
+     (16 * k - 15); (8 * k - 7); (4 * k - 3); (2 * k - 1); (k).
+     For k = 11, these translate to  
+               161;          81;          41;          21;  11
     """
     def __init__(self, n_classes):
         super(DeepLabMScLargeFOV, self).__init__()
@@ -115,6 +117,9 @@ class DeepLabMScLargeFOV(nn.Module):
         MSc1.append(nn.Dropout(p=0.5))
         MSc1.append(nn.Conv2d(128, n_classes, 1))
         self.MSc1 = nn.Sequential(*MSc1)
+        # self.MSc1_score = nn.Conv2d(128, n_classes, 1)
+        # nn.init.normal_(self.MSc1_score.weight, std=0.01)
+        # nn.init.constant_(self.MSc1_score.bias, 0)
 
         # Network
         features1 = []
@@ -135,6 +140,9 @@ class DeepLabMScLargeFOV(nn.Module):
         MSc2.append(nn.Dropout(p=0.5))
         MSc2.append(nn.Conv2d(128, n_classes, 1))
         self.MSc2 = nn.Sequential(*MSc2)
+        # self.MSc2_score = nn.Conv2d(128, n_classes, 1)
+        # nn.init.normal_(self.MSc2_score.weight, std=0.01)
+        # nn.init.constant_(self.MSc2_score.bias, 0)
 
         # Network
         features2 = []
@@ -145,7 +153,7 @@ class DeepLabMScLargeFOV(nn.Module):
         features2.append(nn.MaxPool2d(3, stride=2, padding=1, ceil_mode=True))
         self.features2 = nn.Sequential(*features2)
 
-        #  second pool to classifier
+        # second pool to classifier
         MSc3 = []
         MSc3.append(nn.Conv2d(128, 128, 3, stride=2, padding=1))
         MSc3.append(nn.ReLU(inplace=True))
@@ -155,6 +163,9 @@ class DeepLabMScLargeFOV(nn.Module):
         MSc3.append(nn.Dropout(p=0.5))
         MSc3.append(nn.Conv2d(128, n_classes, 1))
         self.MSc3 = nn.Sequential(*MSc3)
+        # self.MSc3_score = nn.Conv2d(128, n_classes, 1)
+        # nn.init.normal_(self.MSc3_score.weight, std=0.01)
+        # nn.init.constant_(self.MSc3_score.bias, 0)
 
         # Network
         features3 = []
@@ -167,7 +178,7 @@ class DeepLabMScLargeFOV(nn.Module):
         features3.append(nn.MaxPool2d(3, stride=2, padding=1, ceil_mode=True))
         self.features3 = nn.Sequential(*features3)
 
-        #  third pool to classifier
+        # third pool to classifier
         MSc4 = []
         MSc4.append(nn.Conv2d(256, 128, 3, stride=1, padding=1))
         MSc4.append(nn.ReLU(inplace=True))
@@ -177,6 +188,9 @@ class DeepLabMScLargeFOV(nn.Module):
         MSc4.append(nn.Dropout(p=0.5))
         MSc4.append(nn.Conv2d(128, n_classes, 1))
         self.MSc4 = nn.Sequential(*MSc4)
+        # self.MSc4_score = nn.Conv2d(128, n_classes, 1)
+        # nn.init.normal_(self.MSc4_score.weight, std=0.01)
+        # nn.init.constant_(self.MSc4_score.bias, 0)
 
         # Network
         features4 = []
@@ -189,7 +203,7 @@ class DeepLabMScLargeFOV(nn.Module):
         features4.append(nn.MaxPool2d(3, stride=1, padding=1, ceil_mode=True))
         self.features4 = nn.Sequential(*features4)
 
-        #  fourth pool to classifier
+        # fourth pool to classifier
         MSc5 = []
         MSc5.append(nn.Conv2d(512, 128, 3, stride=1, padding=1))
         MSc5.append(nn.ReLU(inplace=True))
@@ -199,6 +213,9 @@ class DeepLabMScLargeFOV(nn.Module):
         MSc5.append(nn.Dropout(p=0.5))
         MSc5.append(nn.Conv2d(128, n_classes, 1))
         self.MSc5 = nn.Sequential(*MSc5)
+        # self.MSc5_score = nn.Conv2d(128, n_classes, 1)
+        # nn.init.normal_(self.MSc5_score.weight, std=0.01)
+        # nn.init.constant_(self.MSc5_score.bias, 0)
 
         # Network
         features5 = []
@@ -215,10 +232,10 @@ class DeepLabMScLargeFOV(nn.Module):
         fc.append(nn.AvgPool2d(3, stride=1, padding=1))
         fc.append(nn.Conv2d(512, 1024, 3, padding=12, dilation=12))
         fc.append(nn.ReLU(inplace=True))
-        fc.append(nn.Dropout(p=0.5))
+        # fc.append(nn.Dropout2d(p=0.5))
         fc.append(nn.Conv2d(1024, 1024, 1))
         fc.append(nn.ReLU(inplace=True))
-        fc.append(nn.Dropout(p=0.5))
+        fc.append(nn.Dropout2d(p=0.5))
         self.fc = nn.Sequential(*fc)
 
         self.score = nn.Conv2d(1024, n_classes, 1)
@@ -260,18 +277,18 @@ class DeepLabMScLargeFOV(nn.Module):
 
     def forward(self, x):
         _, _, h, w = x.size()
-        fuse1 = self.MSc1(x)
+        # fuse1 = self.MSc1(x)
         out = self.features1(x)
-        fuse2 = self.MSc2(out)
+        # fuse2 = self.MSc2(out)
         out = self.features2(out)
-        fuse3 = self.MSc3(out)
+        # fuse3 = self.MSc3(out)
         out = self.features3(out)
-        fuse4 = self.MSc4(out)
+        # fuse4 = self.MSc4(out)
         out = self.features4(out)
-        fuse5 = self.MSc5(out)
+        # fuse5 = self.MSc5(out)
         out = self.features5(out)
         out = self.fc(out)
         out = self.score(out)
-        out = fuse1 + fuse2 + fuse3 + fuse4 + fuse5 + out
+        # out = fuse1 + fuse2 + fuse3 + fuse4 + fuse5
         out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out

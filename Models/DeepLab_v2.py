@@ -98,14 +98,14 @@ class DeepLabASPP(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+                nn.init.constant_(m.bias, 0)
+
         vgg = torchvision.models.vgg16(pretrained=True)
         state_dict = vgg.features.state_dict()
         self.features.load_state_dict(state_dict)
-
-        # for m in self.classifier.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         nn.init.kaiming_normal_(m.weight)
-        #         nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         _, _, h, w = x.size()
