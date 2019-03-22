@@ -9,13 +9,10 @@ class PSPNet(nn.Module):
         super(PSPNet, self).__init__()
 
         self.resnet = ResNet(Bottleneck, [3, 4, 6, 3])
-        self.pool1 = self._pyramid_pooling(2048, 512, 10)
-        self.pool2 = self._pyramid_pooling(2048, 512, 20)
-        self.pool3 = self._pyramid_pooling(2048, 512, 30)
-        self.pool4 = self._pyramid_pooling(2048, 512, 60)
+        self.pyramid_pooling = PyramidPooling(2048, 512)
         self.final = nn.Sequential(
             nn.Conv2d(4096, 512, 3, padding=1),
-            nn.BatchNorm2d(512, momentum=0.95),
+            nn.BatchNorm2d(512),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.1),
             nn.Conv2d(512, n_classes, 1)
@@ -24,39 +21,53 @@ class PSPNet(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        for module in [self.pool1, self.pool2, self.pool3, self.pool4, self.final]:
-            for m in module:
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(m.weight)
-
-    def _pyramid_pooling(self, in_channels, out_channels, scale):
-        module = nn.Sequential(
-            nn.AvgPool2d(kernel_size=scale, stride=scale),
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_channels, momentum=0.95)
-        )
-        return module
+        for m in self.final:
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
 
     def forward(self, x):
-        _, _, ih, iw = x.size()
+        _, _, h, w = x.size()
         out = self.resnet(x)
-        _, _, ph, pw = out.size()
-        pool1 = self.pool1(out)
-        pool2 = self.pool2(out)
-        pool3 = self.pool3(out)
-        pool4 = self.pool4(out)
-        pool1 = F.interpolate(pool1, size=(ph, pw), mode='bilinear', align_corners=True)
-        pool2 = F.interpolate(pool2, size=(ph, pw), mode='bilinear', align_corners=True)
-        pool3 = F.interpolate(pool3, size=(ph, pw), mode='bilinear', align_corners=True)
-        pool4 = F.interpolate(pool4, size=(ph, pw), mode='bilinear', align_corners=True)
-        out = torch.cat([out, pool1, pool2, pool3, pool4], 1)
+        out = self.pyramid_pooling(out)
         out = self.final(out)
-        out = F.interpolate(out, size=(ih, iw), mode='bilinear', align_corners=True)
+        out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=True)
         return out
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+class PyramidPooling(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(PyramidPooling, self).__init__()
+        self.pool1 = self._pyramid_conv(in_channels, out_channels, 1)
+        self.pool2 = self._pyramid_conv(in_channels, out_channels, 2)
+        self.pool3 = self._pyramid_conv(in_channels, out_channels, 3)
+        self.pool4 = self._pyramid_conv(in_channels, out_channels, 6)
+
+    def _pyramid_conv(self, in_channels, out_channels, scale):
+        module = nn.Sequential(
+            nn.AdaptiveAvgPool2d(scale),
+            # nn.AvgPool2d(kernel_size=scale, stride=scale),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        return module
+    
+    def forward(self, x):
+        _, _, h, w = x.size()
+        pool1 = self.pool1(x)
+        pool2 = self.pool2(x)
+        pool3 = self.pool3(x)
+        pool4 = self.pool4(x)
+        pool1 = F.interpolate(pool1, size=(h, w), mode='bilinear', align_corners=True)
+        pool2 = F.interpolate(pool2, size=(h, w), mode='bilinear', align_corners=True)
+        pool3 = F.interpolate(pool3, size=(h, w), mode='bilinear', align_corners=True)
+        pool4 = F.interpolate(pool4, size=(h, w), mode='bilinear', align_corners=True)
+        out = torch.cat([x, pool1, pool2, pool3, pool4], 1)
+        return out
+
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -64,12 +75,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = conv1x1(inplanes, planes)
-        self.bn1 = nn.BatchNorm2d(planes, momentum=0.95)
+        self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=dilation, dilation=dilation, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes, momentum=0.95)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion, momentum=0.95)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -103,13 +114,13 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(64, momentum=0.95),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64, momentum=0.95),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64, momentum=0.95),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         )

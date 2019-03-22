@@ -7,42 +7,35 @@ import torch.nn.functional as F
 class DeepLabV3(nn.Module):
     def __init__(self, n_classes):
         super(DeepLabV3, self).__init__()
-
+        self.n_classes = n_classes
         self.resnet = ResNet(Bottleneck, [3, 4, 6, 3])
-        resnet_pretrained = torchvision.models.resnet50(pretrained=True)
-        self.resnet.conv1.load_state_dict(resnet_pretrained.conv1.state_dict())
-        self.resnet.bn1.load_state_dict(resnet_pretrained.bn1.state_dict())
-        self.resnet.layer1.load_state_dict(resnet_pretrained.layer1.state_dict())
-        self.resnet.layer2.load_state_dict(resnet_pretrained.layer2.state_dict())
-        self.resnet.layer3.load_state_dict(resnet_pretrained.layer3.state_dict())
-        self.resnet.layer4.load_state_dict(resnet_pretrained.layer4.state_dict())
-        self.head = _DeepLabHead(n_classes)
+        self.atrous_rates = [6, 12, 18]         # output_stride = 16
+        # self.atrous_rates = [12, 24, 36]        # output_stride = 8
+        self.aspp = ASPP(2048, self.atrous_rates)     
+
+        self.logits1 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[0])
+        self.logits2 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[1])
+        self.logits3 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[2])
+        # nn.init.normal_(self.logits1.weight, std=0.01)
+        # nn.init.normal_(self.logits2.weight, std=0.01)
+        # nn.init.normal_(self.logits3.weight, std=0.01)
+        # self.final = nn.Conv2d(256, n_classes, 1)
+        # nn.init.normal_(self.final.weight, 0.01)
+
+        # self.outputs_to_logits = {}
 
     def forward(self, x):
         _, _, h, w = x.size()
         out = self.resnet(x)
-        out = self.head(out)
+        out = self.aspp(out)
+        # for output in range(self.n_classes):
+        branch_logits1 = self.logits1(out)
+        # branch_logits2 = self.logits2(out)
+        # branch_logits3 = self.logits3(out)
+
+        out = branch_logits1
+        # out = self.final(out)
         out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=True)
-        return out
-
-class _DeepLabHead(nn.Module):
-    def __init__(self, n_classes):
-        super(_DeepLabHead, self).__init__()
-        self.aspp = ASPP(2048, [6, 12, 18])     # output_stride = 16
-        # self.aspp = ASPP(2048, [12, 24, 36])  # output_stride = 8
-        self.block = nn.Sequential(
-            # nn.Conv2d(in_channels=256, out_channels=256,
-            #           kernel_size=3, padding=1, bias=False),
-            # nn.BatchNorm2d(num_features=256),
-            # nn.ReLU(inplace=True),
-            # nn.Dropout(0.1),
-            nn.Conv2d(in_channels=256, out_channels=n_classes,
-                      kernel_size=1)
-        )
-
-    def forward(self, x):
-        out = self.aspp(x)
-        out = self.block(out)
         return out
 
 
@@ -76,8 +69,25 @@ class ASPP(nn.Module):
                       kernel_size=1, bias=False),
             nn.BatchNorm2d(num_features=out_channels),
             nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5)
+            nn.Dropout(p=0.1)
         )
+
+    #     self._initialize_weights()
+
+    # def _initialize_weights(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.Conv2d):
+    #             nn.init.kaiming_normal_(m.weight)
+
+    def _ASPPConv(self, in_channels, out_channels, atrous_rate):
+        block = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
+                    kernel_size=3, padding=atrous_rate,
+                    dilation=atrous_rate, bias=False),
+            nn.BatchNorm2d(num_features=out_channels),
+            nn.ReLU(inplace=True)
+        )
+        return block
 
     def forward(self, x):
         _, _, h, w = x.size()
@@ -92,17 +102,6 @@ class ASPP(nn.Module):
 
         out = self.project(out)
         return out
-    
-    def _ASPPConv(self, in_channels, out_channels, atrous_rate):
-        block = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                    kernel_size=3, padding=atrous_rate,
-                    dilation=atrous_rate, bias=False),
-            nn.BatchNorm2d(num_features=out_channels),
-            nn.ReLU(inplace=True)
-        )
-        return block
-
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
@@ -167,6 +166,17 @@ class ResNet(nn.Module):
         # for output_stride = 8
         # self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        resnet = torchvision.models.resnet50(pretrained=True)
+        self.conv1.load_state_dict(resnet.conv1.state_dict())
+        self.bn1.load_state_dict(resnet.bn1.state_dict())
+        self.layer1.load_state_dict(resnet.layer1.state_dict())
+        self.layer2.load_state_dict(resnet.layer2.state_dict())
+        self.layer3.load_state_dict(resnet.layer3.state_dict())
+        self.layer4.load_state_dict(resnet.layer4.state_dict())
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1, multi_grid=1):
         downsample = None
