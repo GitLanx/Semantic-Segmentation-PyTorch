@@ -8,7 +8,7 @@ import skimage.color
 import skimage.transform
 from torch.optim import lr_scheduler
 
-# https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
+# Adapted from https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
 
 # -----------------------------------------------------------------------------
 # Color Util
@@ -41,6 +41,10 @@ def visualize_label_colormap(cmap):
 # -----------------------------------------------------------------------------
 # Evaluation
 # -----------------------------------------------------------------------------
+
+# Adapted from:
+# https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/metrics.py
+
 class runningScore(object):
     def __init__(self, n_classes):
         self.n_classes = n_classes
@@ -97,38 +101,6 @@ class averageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-
-def _fast_hist(label_true, label_pred, n_class):
-    mask = (label_true >= 0) & (label_true < n_class)
-    hist = np.bincount(
-        n_class * label_true[mask].astype(int) +
-        label_pred[mask], minlength=n_class ** 2).reshape(n_class, n_class)
-    return hist
-
-
-def label_accuracy_score(label_trues, label_preds, n_class):
-    """Returns accuracy score evaluation result.
-      - overall accuracy
-      - mean accuracy
-      - mean IU
-      - fwavacc
-    """
-    hist = np.zeros((n_class, n_class))
-    for lt, lp in zip(label_trues, label_preds):
-        hist += _fast_hist(lt.flatten(), lp.flatten(), n_class)
-    acc = np.diag(hist).sum() / hist.sum()
-    with np.errstate(divide='ignore', invalid='ignore'):
-        acc_cls = np.diag(hist) / hist.sum(axis=1)
-    acc_cls = np.nanmean(acc_cls)
-    with np.errstate(divide='ignore', invalid='ignore'):
-        iu = np.diag(hist) / (
-            hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist)
-        )
-    mean_iu = np.nanmean(iu)
-    freq = hist.sum(axis=1) / hist.sum()
-    fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
-    return acc, acc_cls, mean_iu, fwavacc
-
 
 # -----------------------------------------------------------------------------
 # Visualization
@@ -333,12 +305,14 @@ def visualize_segmentation(**kwargs):
 # Utilities
 # -----------------------------------------------------------------------------
 
+# Adapted from official CycleGAN implementation
+
 def get_scheduler(optimizer, opt):
     """Return a learning rate scheduler
     Parameters:
         optimizer          -- the optimizer of the network
         opt (option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions．　
-                              opt.lr_policy is the name of learning rate policy: linear | step | plateau | cosine
+                              opt.lr_policy is the name of learning rate policy: linear | poly | step | plateau | cosine
     For 'linear', we keep the same learning rate for the first <opt.niter> epochs
     and linearly decay the rate to zero over the next <opt.niter_decay> epochs.
     For other schedulers (step, plateau, and cosine), we use the default PyTorch schedulers.
