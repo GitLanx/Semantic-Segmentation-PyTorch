@@ -58,8 +58,9 @@ class DeepLabASPP(nn.Module):
         fc1.append(nn.Conv2d(1024, 1024, 1))
         fc1.append(nn.ReLU(inplace=True))
         fc1.append(nn.Dropout(p=0.5))
-        fc1.append(nn.Conv2d(1024, n_classes, 1))
+        # fc1.append(nn.Conv2d(1024, n_classes, 1))
         self.fc1 = nn.Sequential(*fc1)
+        self.fc1_score = nn.Conv2d(1024, n_classes, 1)
 
         # hole = 12
         fc2 = []
@@ -69,8 +70,9 @@ class DeepLabASPP(nn.Module):
         fc2.append(nn.Conv2d(1024, 1024, 1))
         fc2.append(nn.ReLU(inplace=True))
         fc2.append(nn.Dropout(p=0.5))
-        fc2.append(nn.Conv2d(1024, n_classes, 1))
+        # fc2.append(nn.Conv2d(1024, n_classes, 1))
         self.fc2 = nn.Sequential(*fc2)
+        self.fc2_score = nn.Conv2d(1024, n_classes, 1)
 
         # hole = 18
         fc3 = []
@@ -80,8 +82,9 @@ class DeepLabASPP(nn.Module):
         fc3.append(nn.Conv2d(1024, 1024, 1))
         fc3.append(nn.ReLU(inplace=True))
         fc3.append(nn.Dropout(p=0.5))
-        fc3.append(nn.Conv2d(1024, n_classes, 1))
+        # fc3.append(nn.Conv2d(1024, n_classes, 1))
         self.fc3 = nn.Sequential(*fc3)
+        self.fc3_score = nn.Conv2d(1024, n_classes, 1)
 
         # hole = 24
         fc4 = []
@@ -91,15 +94,16 @@ class DeepLabASPP(nn.Module):
         fc4.append(nn.Conv2d(1024, 1024, 1))
         fc4.append(nn.ReLU(inplace=True))
         fc4.append(nn.Dropout(p=0.5))
-        fc4.append(nn.Conv2d(1024, n_classes, 1))
+        # fc4.append(nn.Conv2d(1024, n_classes, 1))
         self.fc4 = nn.Sequential(*fc4)
+        self.fc4_score = nn.Conv2d(1024, n_classes, 1)
 
         self._initialize_weights()
 
     def _initialize_weights(self):
-        for m in self.modules():
+        for m in [self.fc1_score, self.fc2_score, self.fc3_score, self.fc4_score]:
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight)
+                nn.init.normal_(m.weight, std=0.01)
                 nn.init.constant_(m.bias, 0)
 
         if self.pretrained:
@@ -110,10 +114,10 @@ class DeepLabASPP(nn.Module):
     def forward(self, x):
         _, _, h, w = x.size()
         out = self.features(x)
-        fuse1 = self.fc1(out)
-        fuse2 = self.fc2(out)
-        fuse3 = self.fc3(out)
-        fuse4 = self.fc4(out)
+        fuse1 = self.fc1_score(self.fc1(out))
+        fuse2 = self.fc2_score(self.fc2(out))
+        fuse3 = self.fc3_score(self.fc3(out))
+        fuse4 = self.fc4_score(self.fc4(out))
         out = fuse1 + fuse2 + fuse3 + fuse4
         out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
