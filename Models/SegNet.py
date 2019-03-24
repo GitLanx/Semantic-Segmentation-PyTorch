@@ -5,12 +5,13 @@ import torchvision
 
 class SegNet(nn.Module):
     """
-    Adapted from official caffe implementation:
+    Adapted from official implementation:
 
     https://github.com/alexgkendall/SegNet-Tutorial/tree/master/Models
     """
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, pretrained):
         super(SegNet, self).__init__()
+        self.pretrained = pretrained
         # conv1
         features1 = []
         features1.append(nn.Conv2d(3, 64, 3, padding=1))
@@ -147,33 +148,34 @@ class SegNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0.001)
 
-        vgg16 = torchvision.models.vgg16_bn(pretrained=True)
-        vgg_features = [
-            vgg16.features[0:6],
-            vgg16.features[7:13],
-            vgg16.features[14:23],
-            vgg16.features[24:33],
-            vgg16.features[34:43]
-        ]
-        features = [
-            self.features1,
-            self.features2,
-            self.features3,
-            self.features4,
-            self.features5
-        ]
-        for l1, l2 in zip(vgg_features, features):
-            for ll1, ll2 in zip(l1.children(), l2.children()):
-                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
-                    assert ll1.weight.size() == ll2.weight.size()
-                    assert ll1.bias.size() == ll2.bias.size()
-                    ll2.weight.data = ll1.weight.data
-                    ll2.bias.data = ll1.bias.data
-                if isinstance(ll1, nn.BatchNorm2d) and isinstance(ll2, nn.BatchNorm2d):
-                    assert ll1.weight.size() == ll2.weight.size()
-                    assert ll1.bias.size() == ll2.bias.size()
-                    ll2.weight.data = ll1.weight.data
-                    ll2.bias.data = ll1.bias.data
+        if self.pretrained:
+            vgg16 = torchvision.models.vgg16_bn(pretrained=True)
+            vgg_features = [
+                vgg16.features[0:6],
+                vgg16.features[7:13],
+                vgg16.features[14:23],
+                vgg16.features[24:33],
+                vgg16.features[34:43]
+            ]
+            features = [
+                self.features1,
+                self.features2,
+                self.features3,
+                self.features4,
+                self.features5
+            ]
+            for l1, l2 in zip(vgg_features, features):
+                for ll1, ll2 in zip(l1.children(), l2.children()):
+                    if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                        assert ll1.weight.size() == ll2.weight.size()
+                        assert ll1.bias.size() == ll2.bias.size()
+                        ll2.weight.data = ll1.weight.data
+                        ll2.bias.data = ll1.bias.data
+                    if isinstance(ll1, nn.BatchNorm2d) and isinstance(ll2, nn.BatchNorm2d):
+                        assert ll1.weight.size() == ll2.weight.size()
+                        assert ll1.bias.size() == ll2.bias.size()
+                        ll2.weight.data = ll1.weight.data
+                        ll2.bias.data = ll1.bias.data
 
     def forward(self, x):
         out = self.features1(x)
@@ -200,8 +202,9 @@ class SegNet(nn.Module):
 
 # Bilinear interpolation upsampling version
 # class SegNet(nn.Module):
-#     def __init__(self, n_classes):
+#     def __init__(self, n_classes, pretrained):
 #         super(SegNet, self).__init__()
+#         self.pretrained = pretrained
 #         # conv1
 #         features = []
 #         features.append(nn.Conv2d(3, 64, 3, padding=1))
@@ -324,9 +327,10 @@ class SegNet(nn.Module):
 #                 nn.init.constant_(m.weight, 1)
 #                 nn.init.constant_(m.bias, 0.001)
 
-#         vgg16 = torchvision.models.vgg16_bn(pretrained=True)
-#         state_dict = vgg16.features.state_dict()
-#         self.features.load_state_dict(state_dict)
+#         if self.pretrained:
+#             vgg16 = torchvision.models.vgg16_bn(pretrained=True)
+#             state_dict = vgg16.features.state_dict()
+#             self.features.load_state_dict(state_dict)
 
 #     def forward(self, x):
 #         out = self.features(x)

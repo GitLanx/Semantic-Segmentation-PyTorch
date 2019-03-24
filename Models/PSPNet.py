@@ -3,7 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
+# def freeze_bn(self):
+#         for m in self.modules():
+#             if isinstance(m, nn.BatchNorm2d):
+#                 m.eval()
 class PSPNet(nn.Module):
     def __init__(self, n_classes):
         super(PSPNet, self).__init__()
@@ -40,15 +43,15 @@ def conv1x1(in_planes, out_planes, stride=1):
 class PyramidPooling(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(PyramidPooling, self).__init__()
-        self.pool1 = self._pyramid_conv(in_channels, out_channels, 1)
-        self.pool2 = self._pyramid_conv(in_channels, out_channels, 2)
-        self.pool3 = self._pyramid_conv(in_channels, out_channels, 3)
-        self.pool4 = self._pyramid_conv(in_channels, out_channels, 6)
+        self.pool1 = self._pyramid_conv(in_channels, out_channels, 10)
+        self.pool2 = self._pyramid_conv(in_channels, out_channels, 20)
+        self.pool3 = self._pyramid_conv(in_channels, out_channels, 30)
+        self.pool4 = self._pyramid_conv(in_channels, out_channels, 60)
 
     def _pyramid_conv(self, in_channels, out_channels, scale):
         module = nn.Sequential(
-            nn.AdaptiveAvgPool2d(scale),
-            # nn.AvgPool2d(kernel_size=scale, stride=scale),
+            # nn.AdaptiveAvgPool2d(scale),
+            nn.AvgPool2d(kernel_size=scale, stride=scale),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)

@@ -5,14 +5,13 @@ import torch.nn.functional as F
 
 
 class DeepLabASPP(nn.Module):
-    """
-    official caffe training prototxt
+    """Adapted from official implementation:
 
     http://liangchiehchen.com/projects/DeepLabv2_vgg.html
     """
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, pretrained):
         super(DeepLabASPP, self).__init__()
-
+        self.pretrained = pretrained
         features = []
         features.append(nn.Conv2d(3, 64, 3, padding=1))
         features.append(nn.ReLU(inplace=True))
@@ -103,9 +102,10 @@ class DeepLabASPP(nn.Module):
                 nn.init.kaiming_normal_(m.weight)
                 nn.init.constant_(m.bias, 0)
 
-        vgg = torchvision.models.vgg16(pretrained=True)
-        state_dict = vgg.features.state_dict()
-        self.features.load_state_dict(state_dict)
+        if self.pretrained:
+            vgg = torchvision.models.vgg16(pretrained=True)
+            state_dict = vgg.features.state_dict()
+            self.features.load_state_dict(state_dict)
 
     def forward(self, x):
         _, _, h, w = x.size()
