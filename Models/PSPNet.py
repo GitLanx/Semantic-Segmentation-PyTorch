@@ -7,14 +7,17 @@ import torch.nn.functional as F
 #         for m in self.modules():
 #             if isinstance(m, nn.BatchNorm2d):
 #                 m.eval()
+
 class PSPNet(nn.Module):
+    """set crop size to 480
+    """
     def __init__(self, n_classes):
         super(PSPNet, self).__init__()
 
         self.resnet = ResNet(Bottleneck, [3, 4, 6, 3])
         self.pyramid_pooling = PyramidPooling(2048, 512)
         self.final = nn.Sequential(
-            nn.Conv2d(4096, 512, 3, padding=1),
+            nn.Conv2d(4096, 512, 3, padding=1, bias=False),
             nn.BatchNorm2d(512),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.1),
@@ -27,6 +30,11 @@ class PSPNet(nn.Module):
         for m in self.final:
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         _, _, h, w = x.size()
@@ -48,6 +56,16 @@ class PyramidPooling(nn.Module):
         self.pool3 = self._pyramid_conv(in_channels, out_channels, 30)
         self.pool4 = self._pyramid_conv(in_channels, out_channels, 60)
 
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
     def _pyramid_conv(self, in_channels, out_channels, scale):
         module = nn.Sequential(
             # nn.AdaptiveAvgPool2d(scale),
@@ -57,7 +75,7 @@ class PyramidPooling(nn.Module):
             nn.ReLU(inplace=True)
         )
         return module
-    
+
     def forward(self, x):
         _, _, h, w = x.size()
         pool1 = self.pool1(x)
@@ -138,6 +156,15 @@ class ResNet(nn.Module):
         for m in self.conv1.children():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+        
+        for module in [self.layer1, self.layer2, self.layer3, self.layer4]:
+            for m in module.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
 
         resnet = torchvision.models.resnet50(pretrained=True)
         self.layer1.load_state_dict(resnet.layer1.state_dict())
