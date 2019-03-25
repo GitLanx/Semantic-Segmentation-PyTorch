@@ -15,7 +15,7 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('--model', type=str, default='segnet')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190322_142840/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/segnet_20190325_193621/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
     parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
     parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images')
