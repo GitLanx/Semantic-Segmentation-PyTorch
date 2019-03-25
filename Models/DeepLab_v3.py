@@ -9,32 +9,19 @@ class DeepLabV3(nn.Module):
         super(DeepLabV3, self).__init__()
         self.n_classes = n_classes
         self.resnet = ResNet(Bottleneck, [3, 4, 6, 3])
-        self.atrous_rates = [6, 12, 18]         # output_stride = 16
-        # self.atrous_rates = [12, 24, 36]        # output_stride = 8
+        # self.atrous_rates = [6, 12, 18]         # output_stride = 16
+        self.atrous_rates = [12, 24, 36]        # output_stride = 8
         self.aspp = ASPP(2048, self.atrous_rates)     
 
-        self.logits1 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[0])
-        self.logits2 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[1])
-        self.logits3 = nn.Conv2d(256, n_classes, 1, dilation=self.atrous_rates[2])
-        # nn.init.normal_(self.logits1.weight, std=0.01)
-        # nn.init.normal_(self.logits2.weight, std=0.01)
-        # nn.init.normal_(self.logits3.weight, std=0.01)
-        # self.final = nn.Conv2d(256, n_classes, 1)
-        # nn.init.normal_(self.final.weight, 0.01)
-
-        # self.outputs_to_logits = {}
+        self.final = nn.Conv2d(256, n_classes, 1)
+        nn.init.normal_(self.final.weight, 0.01)
+        nn.init.constant_(self.final.bias, 0)
 
     def forward(self, x):
         _, _, h, w = x.size()
         out = self.resnet(x)
         out = self.aspp(out)
-        # for output in range(self.n_classes):
-        branch_logits1 = self.logits1(out)
-        # branch_logits2 = self.logits2(out)
-        # branch_logits3 = self.logits3(out)
-
-        out = branch_logits1
-        # out = self.final(out)
+        out = self.final(out)
         out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=True)
         return out
 
@@ -72,12 +59,15 @@ class ASPP(nn.Module):
             nn.Dropout(p=0.1)
         )
 
-    #     self._initialize_weights()
+        self._initialize_weights()
 
-    # def _initialize_weights(self):
-    #     for m in self.modules():
-    #         if isinstance(m, nn.Conv2d):
-    #             nn.init.kaiming_normal_(m.weight)
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
 
     def _ASPPConv(self, in_channels, out_channels, atrous_rate):
         block = nn.Sequential(
@@ -160,12 +150,14 @@ class ResNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0], stride=1)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=2, multi_grid=(1, 2, 4))
+
+        # for output_stride = 16
+        # self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        # self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=2, multi_grid=(1, 2, 4))
 
         # for output_stride = 8
-        # self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
-        # self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 1))
 
         self._initialize_weights()
 
