@@ -16,9 +16,9 @@ class DeepLabLargeFOV(nn.Module):
      For k = 11, these translate to  
                161;          81;          41;          21;  11
     """
-    def __init__(self, n_classes, pretrained):
+    def __init__(self, n_classes):
         super(DeepLabLargeFOV, self).__init__()
-        self.pretrained = pretrained
+
         features = []
         features.append(nn.Conv2d(3, 64, 3, padding=1))
         features.append(nn.ReLU(inplace=True))
@@ -71,10 +71,10 @@ class DeepLabLargeFOV(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        if self.pretrained:
-            vgg = torchvision.models.vgg16(pretrained=True)
-            state_dict = vgg.features.state_dict()
-            self.features.load_state_dict(state_dict)
+
+        vgg = torchvision.models.vgg16(pretrained=True)
+        state_dict = vgg.features.state_dict()
+        self.features.load_state_dict(state_dict)
 
         # for m in self.fc.modules():
         #     if isinstance(m, nn.Conv2d):
@@ -105,9 +105,9 @@ class DeepLabMScLargeFOV(nn.Module):
      For k = 11, these translate to  
                161;          81;          41;          21;  11
     """
-    def __init__(self, n_classes, pretrained):
+    def __init__(self, n_classes):
         super(DeepLabMScLargeFOV, self).__init__()
-        self.pretrained = pretrained
+
         # from image to classifier
         self.MSc1 = self._msc(in_channels=3, stride=8)
         self.MSc1_score = nn.Conv2d(128, n_classes, 1)
@@ -204,29 +204,29 @@ class DeepLabMScLargeFOV(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        if self.pretrained:
-            vgg16 = torchvision.models.vgg16(pretrained=True)
-            vgg_features = [
-                vgg16.features[0:4],
-                vgg16.features[5:9],
-                vgg16.features[10:16],
-                vgg16.features[17:23],
-                vgg16.features[24:30]
-            ]
-            features = [
-                self.features1,
-                self.features2,
-                self.features3,
-                self.features4,
-                self.features5
-            ]
-            for l1, l2 in zip(vgg_features, features):
-                for ll1, ll2 in zip(l1.children(), l2.children()):
-                    if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
-                        assert ll1.weight.size() == ll2.weight.size()
-                        assert ll1.bias.size() == ll2.bias.size()
-                        ll2.weight.data = ll1.weight.data
-                        ll2.bias.data = ll1.bias.data
+
+        vgg16 = torchvision.models.vgg16(pretrained=True)
+        vgg_features = [
+            vgg16.features[0:4],
+            vgg16.features[5:9],
+            vgg16.features[10:16],
+            vgg16.features[17:23],
+            vgg16.features[24:30]
+        ]
+        features = [
+            self.features1,
+            self.features2,
+            self.features3,
+            self.features4,
+            self.features5
+        ]
+        for l1, l2 in zip(vgg_features, features):
+            for ll1, ll2 in zip(l1.children(), l2.children()):
+                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
 
         for module in [self.MSc1, self.MSc2, self.MSc3, self.MSc4, self.MSc5]:
             for m in module.children():

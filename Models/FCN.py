@@ -25,9 +25,9 @@ class FCN32s(nn.Module):
 
     https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/voc-fcn32s/train.prototxt
     """
-    def __init__(self, n_classes, pretrained):
+    def __init__(self, n_classes):
         super(FCN32s, self).__init__()
-        self.pretrained = pretrained
+
         features = []
         # conv1
         features.append(nn.Conv2d(3, 64, 3, padding=100))
@@ -99,15 +99,15 @@ class FCN32s(nn.Module):
                     m.in_channels, m.out_channels, m.kernel_size[0])
                 m.weight.data.copy_(initial_weight)
 
-        if self.pretrained:
-            vgg16 = torchvision.models.vgg16(pretrained=True)
-            state_dict = vgg16.features.state_dict()
-            self.features.load_state_dict(state_dict)
 
-            for l1, l2 in zip(vgg16.classifier.children(), self.fc):
-                if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                    l2.weight.data = l1.weight.data.view(l2.weight.size())
-                    l2.bias.data = l1.bias.data.view(l2.bias.size())
+        vgg16 = torchvision.models.vgg16(pretrained=True)
+        state_dict = vgg16.features.state_dict()
+        self.features.load_state_dict(state_dict)
+
+        for l1, l2 in zip(vgg16.classifier.children(), self.fc):
+            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
+                l2.weight.data = l1.weight.data.view(l2.weight.size())
+                l2.bias.data = l1.bias.data.view(l2.bias.size())
 
     def forward(self, x):
         out = self.features(x)
@@ -120,9 +120,9 @@ class FCN32s(nn.Module):
 
 
 class FCN8sAtOnce(nn.Module):
-    def __init__(self, n_classes, pretrained):
+    def __init__(self, n_classes):
         super(FCN8sAtOnce, self).__init__()
-        self.pretrained = pretrained
+
         # conv1
         self.conv1_1 = nn.Conv2d(3, 64, 3, padding=100)
         self.relu1_1 = nn.ReLU(inplace=True)
