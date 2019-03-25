@@ -59,7 +59,6 @@ class Trainer:
         train_metrics = runningScore(self.n_classes)
         train_loss_meter = averageMeter()
 
-        # label_trues, label_preds = [], []
         for data, target in tqdm.tqdm(
                 self.train_loader, total=len(self.train_loader),
                 desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
@@ -84,18 +83,9 @@ class Trainer:
             loss.backward()
             self.optim.step()
 
-            # metrics = []
             lbl_pred = score.data.max(1)[1].cpu().numpy()
             lbl_true = target.data.cpu().numpy()
-            # for lt, lp in zip(lbl_true, lbl_pred):
-                # label_trues.append(lt)
-                # label_preds.append(lp)
             train_metrics.update(lbl_true, lbl_pred)
-            # metrics = label_accuracy_score(
-            #         label_trues, label_preds, self.n_classes)
-
-            # metrics.append((acc, acc_cls, mean_iu, fwavacc))
-            # metrics = np.mean(metrics, axis=0)
 
         acc, acc_cls, mean_iou, fwavacc, _ = train_metrics.get_scores()
         metrics = [acc, acc_cls, mean_iou, fwavacc]
@@ -114,14 +104,12 @@ class Trainer:
 
         if self.epoch % self.val_epoch == 0:
             self.validate()
-            lr = self.optim.param_groups[0]['lr']
-            print('learning rate = %.7f' % lr)
+            # lr = self.optim.param_groups[0]['lr']
+            # print('learning rate = %.7f' % lr)
 
     def validate(self):
 
-        # val_loss = 0
         visualizations = []
-        # label_trues, label_preds = [], []
         val_metrics = runningScore(self.n_classes)
         val_loss_meter = averageMeter()
 
@@ -139,7 +127,7 @@ class Trainer:
                 loss_data = loss.data.item()
                 if np.isnan(loss_data):
                     raise ValueError('loss is nan while validating')
-                # val_loss += loss_data / len(data)
+
                 val_loss_meter.update(loss_data)
 
                 imgs = data.data.cpu()
@@ -147,28 +135,23 @@ class Trainer:
                 lbl_true = target.data.cpu()
                 for img, lt, lp in zip(imgs, lbl_true, lbl_pred):
                     img, lt = self.val_loader.dataset.untransform(img, lt)
-                    # label_trues.append(lt)
-                    # label_preds.append(lp)
                     val_metrics.update(lt, lp)
                     if len(visualizations) < 9:
                         viz = visualize_segmentation(
                             lbl_pred=lp, lbl_true=lt, img=img,
                             n_classes=self.n_classes, dataloader=self.train_loader)
                         visualizations.append(viz)
-        # metrics = label_accuracy_score(
-        #     label_trues, label_preds, self.n_classes)
 
         acc, acc_cls, mean_iou, fwavacc, _ = val_metrics.get_scores()
         metrics = [acc, acc_cls, mean_iou, fwavacc]
 
+        print('\n' + f'loss: {val_loss_meter.avg}, mIoU: {mean_iou}')
+
         out = osp.join(self.out, 'visualization_viz')
         if not osp.exists(out):
             os.makedirs(out)
-        # out_file = osp.join(out, 'epoch%08d.jpg' % self.epoch)
         out_file = osp.join(out, 'epoch{:0>5d}.jpg'.format(self.epoch))
         scipy.misc.imsave(out_file, get_tile_image(visualizations))
-
-        # val_loss /= len(self.val_loader)
 
         with open(osp.join(self.out, 'log.csv'), 'a') as f:
             elapsed_time = (
