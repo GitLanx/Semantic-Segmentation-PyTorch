@@ -24,5 +24,5 @@ DeepLab-LargeFov|84.19%|69.25%|52.13%|lr=0.01
 DeepLab-MscLargeFov|84.85%|75.97%|55.23%|lr=0.01
 DeepLab-ASPP|85.79%|73.77%|55.49%|lr=0.01
 DeepLab-v3|85.86%|67.20%|53.24%|lr=0.01
-PSPNet|82.01%|60.08%|46.09%|lr=0.01
+PSPNet|83.55%|61.13%|48.78%|lr=0.01
 fcn32s|85.71%|59.66%|49.34%|lr=0.01<br>reduction='mean'
