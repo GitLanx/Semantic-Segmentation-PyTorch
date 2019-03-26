@@ -3,10 +3,15 @@ import numpy as np
 import scipy.ndimage
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # NOQA
+import pandas
+import seaborn
 import skimage
 import skimage.color
 import skimage.transform
 from torch.optim import lr_scheduler
+
 
 # Adapted from https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
 
@@ -339,3 +344,102 @@ def get_scheduler(optimizer, opt):
     else:
         return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
     return scheduler
+
+# Adapted from:
+# https://github.com/wkentaro/pytorch-fcn/blob/master/examples/voc/learning_curve.py
+
+def learning_curve(log_file):
+    print(f'==> Plotting log file: {log_file}')
+
+    df = pandas.read_csv(log_file)
+
+    colors = ['red', 'green', 'blue', 'purple', 'orange']
+    colors = seaborn.xkcd_palette(colors)
+
+    plt.figure(figsize=(20, 6), dpi=300)
+
+    row_min = df.min()
+    row_max = df.max()
+
+    # initialize DataFrame for train
+    columns = [
+        'epoch',
+        'train/loss',
+        'train/acc',
+        'train/acc_cls',
+        'train/mean_iu',
+        'train/fwavacc',
+    ]
+    df_train = df[columns]
+    # if hasattr(df_train, 'rolling'):
+    #     df_train = df_train.rolling(window=10).mean()
+    # else:
+    #     df_train = pandas.rolling_mean(df_train, window=10)
+    df_train = df_train.dropna()
+
+    # initialize DataFrame for val
+    columns = [
+        'epoch',
+        'valid/loss',
+        'valid/acc',
+        'valid/acc_cls',
+        'valid/mean_iu',
+        'valid/fwavacc',
+    ]
+    df_valid = df[columns]
+    df_valid = df_valid.dropna()
+
+    data_frames = {'train': df_train, 'valid': df_valid}
+
+    n_row = 2
+    n_col = 2
+    for i, split in enumerate(['train', 'valid']):
+        df_split = data_frames[split]
+
+        # loss
+        plt.subplot(n_row, n_col, i * n_col + 1)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        plt.plot(df_split['epoch'], df_split[f'{split}/loss'], '-',
+                 markersize=1, color=colors[0], alpha=.5,
+                 label=f'{split} loss')
+        plt.xlim((1, row_max['epoch']))
+        plt.ylim(min(df_split[f'{split}/loss']), max(df_split[f'{split}/loss']))
+        plt.xlabel('epoch')
+        plt.ylabel(f'{split} loss')
+
+        # loss (log)
+        # plt.subplot(n_row, n_col, i * n_col + 2)
+        # plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        # plt.semilogy(df_split['epoch'], df_split[f'{split}/loss'],
+        #              '-', markersize=1, color=colors[0], alpha=.5,
+        #              label=f'{split} loss')
+        # plt.xlim((1, row_max['epoch']))
+        # plt.ylim(min(df_split[f'{split}/loss']), max(df_split[f'{split}/loss']))
+        # plt.xlabel('epoch')
+        # plt.ylabel('f{split} loss (log)')
+
+        # lbl accuracy
+        plt.subplot(n_row, n_col, i * n_col + 2)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        plt.plot(df_split['epoch'], df_split[f'{split}/acc'],
+                 '-', markersize=1, color=colors[1], alpha=.5,
+                 label=f'{split} accuracy')
+        plt.plot(df_split['epoch'], df_split[f'{split}/acc_cls'],
+                 '-', markersize=1, color=colors[2], alpha=.5,
+                 label=f'{split} accuracy class')
+        plt.plot(df_split['epoch'], df_split[f'{split}/mean_iu'],
+                 '-', markersize=1, color=colors[3], alpha=.5,
+                 label=f'{split} mean IU')
+        plt.plot(df_split['epoch'], df_split[f'{split}/fwavacc'],
+                 '-', markersize=1, color=colors[4], alpha=.5,
+                 label=f'{split} fwav accuracy')
+        plt.legend()
+        plt.xlim((1, row_max['epoch']))
+        plt.ylim((0, 1))
+        plt.xlabel('epoch')
+        plt.ylabel(f'{split} label accuracy')
+
+    # out_file = osp.splitext(log_file)[0] + '.png'
+    out_file = log_file[:-4] + '.png'
+    plt.savefig(out_file)
+    print(f'==> Wrote figure to: {out_file}')
