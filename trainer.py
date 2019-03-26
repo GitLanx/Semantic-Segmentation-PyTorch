@@ -2,7 +2,7 @@ import datetime
 import os
 import os.path as osp
 import shutil
-from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter
+from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter, learning_curve
 import numpy as np
 import pytz
 import scipy.misc
@@ -50,11 +50,16 @@ class Trainer:
                 f.write(','.join(self.log_headers) + '\n')
 
         self.n_classes = n_classes
-        self.epoch = 0
+        self.epoch = 1
         self.epochs = epochs
         self.best_mean_iu = 0
 
     def train_epoch(self):
+        if self.epoch % self.val_epoch == 0 or self.epoch == 1:
+            self.validate()
+            # lr = self.optim.param_groups[0]['lr']
+            # print('learning rate = %.7f' % lr)
+
         self.model.train()
         train_metrics = runningScore(self.n_classes)
         train_loss_meter = averageMeter()
@@ -101,11 +106,6 @@ class Trainer:
         
         if self.scheduler:
             self.scheduler.step()
-
-        if self.epoch % self.val_epoch == 0:
-            self.validate()
-            # lr = self.optim.param_groups[0]['lr']
-            # print('learning rate = %.7f' % lr)
 
     def validate(self):
 
@@ -185,3 +185,5 @@ class Trainer:
                                  desc='Train', ncols=80):
             self.epoch = epoch
             self.train_epoch()
+        
+        learning_curve(self.out + 'log.csv')
