@@ -18,7 +18,7 @@ class PSPNet(nn.Module):
         self.pyramid_pooling = PyramidPooling(2048, 512)
         self.final = nn.Sequential(
             nn.Conv2d(4096, 512, 3, padding=1, bias=False),
-            nn.BatchNorm2d(512),
+            nn.BatchNorm2d(512, momentum=.95),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.1),
             nn.Conv2d(512, n_classes, 1)
@@ -71,7 +71,7 @@ class PyramidPooling(nn.Module):
             # nn.AdaptiveAvgPool2d(scale),
             nn.AvgPool2d(kernel_size=scale, stride=scale),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=.95),
             nn.ReLU(inplace=True)
         )
         return module
@@ -96,12 +96,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = conv1x1(inplanes, planes)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = nn.BatchNorm2d(planes, momentum=.95)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=dilation, dilation=dilation, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = nn.BatchNorm2d(planes, momentum=.95)
         self.conv3 = conv1x1(planes, planes * self.expansion)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion, momentum=.95)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -135,13 +135,13 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=.95),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=.95),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=.95),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         )
