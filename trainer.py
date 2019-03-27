@@ -186,4 +186,4 @@ class Trainer:
             self.epoch = epoch
             self.train_epoch()
         
-        learning_curve(self.out + 'log.csv')
+        learning_curve(osp.join(self.out, 'log.csv'))
