@@ -88,16 +88,14 @@ class FCN32s(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         m.weight.data.zero_()
-        #         if m.bias is not None:
-        #             m.bias.data.zero_()
-            if isinstance(m, nn.ConvTranspose2d):
-                assert m.kernel_size[0] == m.kernel_size[1]
-                initial_weight = get_upsampling_weight(
-                    m.in_channels, m.out_channels, m.kernel_size[0])
-                m.weight.data.copy_(initial_weight)
+        self.score_fr.weight.data.zero_()
+        self.score_fr.bias.data.zero_()
+
+        assert self.upscore.kernel_size[0] == self.upscore.kernel_size[1]
+        initial_weight = get_upsampling_weight(
+                self.upscore.in_channels, self.upscore.out_channels,
+                self.upscore.kernel_size[0])
+        self.upscore.weight.data.copy_(initial_weight)
 
 
         vgg16 = torchvision.models.vgg16(pretrained=True)
@@ -123,56 +121,64 @@ class FCN8sAtOnce(nn.Module):
     def __init__(self, n_classes):
         super(FCN8sAtOnce, self).__init__()
 
+        features1 = []
         # conv1
-        self.conv1_1 = nn.Conv2d(3, 64, 3, padding=100)
-        self.relu1_1 = nn.ReLU(inplace=True)
-        self.conv1_2 = nn.Conv2d(64, 64, 3, padding=1)
-        self.relu1_2 = nn.ReLU(inplace=True)
-        self.pool1 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/2
+        features1.append(nn.Conv2d(3, 64, 3, padding=100))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.Conv2d(64, 64, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/2
 
         # conv2
-        self.conv2_1 = nn.Conv2d(64, 128, 3, padding=1)
-        self.relu2_1 = nn.ReLU(inplace=True)
-        self.conv2_2 = nn.Conv2d(128, 128, 3, padding=1)
-        self.relu2_2 = nn.ReLU(inplace=True)
-        self.pool2 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/4
+        features1.append(nn.Conv2d(64, 128, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.Conv2d(128, 128, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/4
 
         # conv3
-        self.conv3_1 = nn.Conv2d(128, 256, 3, padding=1)
-        self.relu3_1 = nn.ReLU(inplace=True)
-        self.conv3_2 = nn.Conv2d(256, 256, 3, padding=1)
-        self.relu3_2 = nn.ReLU(inplace=True)
-        self.conv3_3 = nn.Conv2d(256, 256, 3, padding=1)
-        self.relu3_3 = nn.ReLU(inplace=True)
-        self.pool3 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/8
+        features1.append(nn.Conv2d(128, 256, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.Conv2d(256, 256, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.Conv2d(256, 256, 3, padding=1))
+        features1.append(nn.ReLU(inplace=True))
+        features1.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/8
+        self.features1 = nn.Sequential(*features1)
 
+        features2 = []
         # conv4
-        self.conv4_1 = nn.Conv2d(256, 512, 3, padding=1)
-        self.relu4_1 = nn.ReLU(inplace=True)
-        self.conv4_2 = nn.Conv2d(512, 512, 3, padding=1)
-        self.relu4_2 = nn.ReLU(inplace=True)
-        self.conv4_3 = nn.Conv2d(512, 512, 3, padding=1)
-        self.relu4_3 = nn.ReLU(inplace=True)
-        self.pool4 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/16
+        features2.append(nn.Conv2d(256, 512, 3, padding=1))
+        features2.append(nn.ReLU(inplace=True))
+        features2.append(nn.Conv2d(512, 512, 3, padding=1))
+        features2.append(nn.ReLU(inplace=True))
+        features2.append(nn.Conv2d(512, 512, 3, padding=1))
+        features2.append(nn.ReLU(inplace=True))
+        features2.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/16
+        self.features2 = nn.Sequential(*features2)
 
+        features3 = []
         # conv5
-        self.conv5_1 = nn.Conv2d(512, 512, 3, padding=1)
-        self.relu5_1 = nn.ReLU(inplace=True)
-        self.conv5_2 = nn.Conv2d(512, 512, 3, padding=1)
-        self.relu5_2 = nn.ReLU(inplace=True)
-        self.conv5_3 = nn.Conv2d(512, 512, 3, padding=1)
-        self.relu5_3 = nn.ReLU(inplace=True)
-        self.pool5 = nn.MaxPool2d(2, stride=2, ceil_mode=True)  # 1/32
+        features3.append(nn.Conv2d(512, 512, 3, padding=1))
+        features3.append(nn.ReLU(inplace=True))
+        features3.append(nn.Conv2d(512, 512, 3, padding=1))
+        features3.append(nn.ReLU(inplace=True))
+        features3.append(nn.Conv2d(512, 512, 3, padding=1))
+        features3.append(nn.ReLU(inplace=True))
+        features3.append(nn.MaxPool2d(2, stride=2, ceil_mode=True))  # 1/32
+        self.features3 = nn.Sequential(*features3)
 
+        fc = []
         # fc6
-        self.fc6 = nn.Conv2d(512, 4096, 7)
-        self.relu6 = nn.ReLU(inplace=True)
-        self.drop6 = nn.Dropout2d()
+        fc.append(nn.Conv2d(512, 4096, 7))
+        fc.append(nn.ReLU(inplace=True))
+        fc.append(nn.Dropout2d())
 
         # fc7
-        self.fc7 = nn.Conv2d(4096, 4096, 1)
-        self.relu7 = nn.ReLU(inplace=True)
-        self.drop7 = nn.Dropout2d()
+        fc.append(nn.Conv2d(4096, 4096, 1))
+        fc.append(nn.ReLU(inplace=True))
+        fc.append(nn.Dropout2d())
+        self.fc = nn.Sequential(*fc)
 
         self.score_fr = nn.Conv2d(4096, n_classes, 1)
         self.score_pool3 = nn.Conv2d(256, n_classes, 1)
@@ -188,104 +194,118 @@ class FCN8sAtOnce(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                m.weight.data.zero_()
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            if isinstance(m, nn.ConvTranspose2d):
-                assert m.kernel_size[0] == m.kernel_size[1]
-                initial_weight = get_upsampling_weight(
-                    m.in_channels, m.out_channels, m.kernel_size[0])
-                m.weight.data.copy_(initial_weight)
+        for m in [self.score_fr, self.score_pool3, self.score_pool4]:
+            m.weight.data.zero_()
+            m.bias.data.zero_()
+
+        for m in [self.upscore2, self.upscore8, self.upscore_pool4]:
+            assert m.kernel_size[0] == m.kernel_size[1]
+            initial_weight = get_upsampling_weight(
+                m.in_channels, m.out_channels, m.kernel_size[0])
+            m.weight.data.copy_(initial_weight)
+        
+        vgg16 = torchvision.models.vgg16(pretrained=True)
+        vgg_features = [
+            vgg16.features[:17],
+            vgg16.features[17:24],
+            vgg16.features[24:],
+        ]
+        features = [
+            self.features1,
+            self.features2,
+            self.features3,
+        ]
+
+        for l1, l2 in zip(vgg_features, features):
+            for ll1, ll2 in zip(l1.children(), l2.children()):
+                if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
+                    assert ll1.weight.size() == ll2.weight.size()
+                    assert ll1.bias.size() == ll2.bias.size()
+                    ll2.weight.data = ll1.weight.data
+                    ll2.bias.data = ll1.bias.data
+
+        for l1, l2 in zip(vgg16.classifier.children(), self.fc):
+            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
+                l2.weight.data = l1.weight.data.view(l2.weight.size())
+                l2.bias.data = l1.bias.data.view(l2.bias.size())
 
     def forward(self, x):
-        h = x
-        h = self.relu1_1(self.conv1_1(h))
-        h = self.relu1_2(self.conv1_2(h))
-        h = self.pool1(h)
+        pool3 = self.features1(x)       # 1/8
 
-        h = self.relu2_1(self.conv2_1(h))
-        h = self.relu2_2(self.conv2_2(h))
-        h = self.pool2(h)
+        pool4 = self.features2(pool3)   # 1/16
 
-        h = self.relu3_1(self.conv3_1(h))
-        h = self.relu3_2(self.conv3_2(h))
-        h = self.relu3_3(self.conv3_3(h))
-        h = self.pool3(h)
-        pool3 = h  # 1/8
+        pool5 = self.features3(pool4)     # 1/32
+        fc = self.fc(pool5)
+        score_fr = self.score_fr(fc)
+        upscore2 = self.upscore2(score_fr)   # 1/16
 
-        h = self.relu4_1(self.conv4_1(h))
-        h = self.relu4_2(self.conv4_2(h))
-        h = self.relu4_3(self.conv4_3(h))
-        h = self.pool4(h)
-        pool4 = h  # 1/16
+        score_pool4 = self.score_pool4(pool4 * 0.01)  # XXX: scaling to train at once
+        score_pool4c = score_pool4[:, :, 5:5 + upscore2.size()[2], 5:5 + upscore2.size()[3]]
+        upscore_pool4 = self.upscore_pool4(upscore2 + score_pool4c)  # 1/8
 
-        h = self.relu5_1(self.conv5_1(h))
-        h = self.relu5_2(self.conv5_2(h))
-        h = self.relu5_3(self.conv5_3(h))
-        h = self.pool5(h)
-
-        h = self.relu6(self.fc6(h))
-        h = self.drop6(h)
-
-        h = self.relu7(self.fc7(h))
-        h = self.drop7(h)
-
-        h = self.score_fr(h)
-        h = self.upscore2(h)
-        upscore2 = h  # 1/16
-
-        h = self.score_pool4(pool4 * 0.01)  # XXX: scaling to train at once
-        h = h[:, :, 5:5 + upscore2.size()[2], 5:5 + upscore2.size()[3]]
-        score_pool4c = h  # 1/16
-
-        h = upscore2 + score_pool4c  # 1/16
-        h = self.upscore_pool4(h)
-        upscore_pool4 = h  # 1/8
-
-        h = self.score_pool3(pool3 * 0.0001)  # XXX: scaling to train at once
-        h = h[:, :,
+        score_pool3 = self.score_pool3(pool3 * 0.0001)  # XXX: scaling to train at once
+        score_pool3c = score_pool3[:, :,
               9:9 + upscore_pool4.size()[2],
               9:9 + upscore_pool4.size()[3]]
-        score_pool3c = h  # 1/8
+        out = self.upscore8(upscore_pool4 + score_pool3c)
 
-        h = upscore_pool4 + score_pool3c  # 1/8
+        out = out[:, :, 31:31 + x.size()[2], 31:31 + x.size()[3]].contiguous()
 
-        h = self.upscore8(h)
-        h = h[:, :, 31:31 + x.size()[2], 31:31 + x.size()[3]].contiguous()
+        return out
 
-        return h
+    # def copy_params_from_vgg16(self, vgg16):
+    #     features = [
+    #         self.conv1_1, self.relu1_1,
+    #         self.conv1_2, self.relu1_2,
+    #         self.pool1,
+    #         self.conv2_1, self.relu2_1,
+    #         self.conv2_2, self.relu2_2,
+    #         self.pool2,
+    #         self.conv3_1, self.relu3_1,
+    #         self.conv3_2, self.relu3_2,
+    #         self.conv3_3, self.relu3_3,
+    #         self.pool3,
+    #         self.conv4_1, self.relu4_1,
+    #         self.conv4_2, self.relu4_2,
+    #         self.conv4_3, self.relu4_3,
+    #         self.pool4,
+    #         self.conv5_1, self.relu5_1,
+    #         self.conv5_2, self.relu5_2,
+    #         self.conv5_3, self.relu5_3,
+    #         self.pool5,
+    #     ]
+    #     for l1, l2 in zip(vgg16.features, features):
+    #         if isinstance(l1, nn.Conv2d) and isinstance(l2, nn.Conv2d):
+    #             assert l1.weight.size() == l2.weight.size()
+    #             assert l1.bias.size() == l2.bias.size()
+    #             l2.weight.data.copy_(l1.weight.data)
+    #             l2.bias.data.copy_(l1.bias.data)
+    #     for i, name in zip([0, 3], ['fc6', 'fc7']):
+    #         l1 = vgg16.classifier[i]
+    #         l2 = getattr(self, name)
+    #         l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
+    #         l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
 
-    def copy_params_from_vgg16(self, vgg16):
-        features = [
-            self.conv1_1, self.relu1_1,
-            self.conv1_2, self.relu1_2,
-            self.pool1,
-            self.conv2_1, self.relu2_1,
-            self.conv2_2, self.relu2_2,
-            self.pool2,
-            self.conv3_1, self.relu3_1,
-            self.conv3_2, self.relu3_2,
-            self.conv3_3, self.relu3_3,
-            self.pool3,
-            self.conv4_1, self.relu4_1,
-            self.conv4_2, self.relu4_2,
-            self.conv4_3, self.relu4_3,
-            self.pool4,
-            self.conv5_1, self.relu5_1,
-            self.conv5_2, self.relu5_2,
-            self.conv5_3, self.relu5_3,
-            self.pool5,
-        ]
-        for l1, l2 in zip(vgg16.features, features):
-            if isinstance(l1, nn.Conv2d) and isinstance(l2, nn.Conv2d):
-                assert l1.weight.size() == l2.weight.size()
-                assert l1.bias.size() == l2.bias.size()
-                l2.weight.data.copy_(l1.weight.data)
-                l2.bias.data.copy_(l1.bias.data)
-        for i, name in zip([0, 3], ['fc6', 'fc7']):
-            l1 = vgg16.classifier[i]
-            l2 = getattr(self, name)
-            l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
-            l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
+
+if __name__ == "__main__":
+    import torch
+    import time
+    model = FCN32s(21)
+    print(f'==> Testing {model.__name__} with PyTorch')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model = model.to(device)
+    model.eval()
+
+    x = torch.Tensor((1, 3, 480, 640))
+    x = x.to(device)
+
+    # torch.cuda.synchronize()
+    t_start = time.time()
+    for i in range(10):
+        model(x)
+    # torch.cuda.synchronize()
+    elapsed_time = time.time() - t_start
+
+    print(f'Elapsed time: {elapsed_time:.2f} [s / 10 evals]')
+    print(f'Hz: {(10 / elapsed_time):.2f} [hz]')

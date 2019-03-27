@@ -18,8 +18,8 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='segnet', help='model to train for')
-    parser.add_argument('--epochs', type=int, default=100, help='total epochs')
+    parser.add_argument('--model', type=str, default='fcn32s', help='model to train for')
+    parser.add_argument('--epochs', type=int, default=200, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=4, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images to proper size')
@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--lr_policy', type=str, default=None, help='learning rate policy')
+    parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
     parser.add_argument('--lr_decay_step', type=float, default=20, help='step size for step learning policy')
