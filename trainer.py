@@ -99,13 +99,15 @@ class Trainer:
             elapsed_time = (
                 datetime.datetime.now(pytz.timezone('UTC')) -
                 self.timestamp_start).total_seconds()
-            log = [self.epoch] + [loss_data] + \
+            log = [self.epoch] + [train_loss_meter.avg] + \
                 metrics + [''] * 5 + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
         
         if self.scheduler:
             self.scheduler.step()
+        train_loss_meter.reset()
+        train_metrics.reset()
 
     def validate(self):
 
@@ -145,7 +147,7 @@ class Trainer:
         acc, acc_cls, mean_iou, fwavacc, _ = val_metrics.get_scores()
         metrics = [acc, acc_cls, mean_iou, fwavacc]
 
-        print('\n' + f'loss: {val_loss_meter.avg}, mIoU: {mean_iou}')
+        print(f'\n{self.epoch}' + f'loss: {val_loss_meter.avg}, mIoU: {mean_iou}')
 
         out = osp.join(self.out, 'visualization_viz')
         if not osp.exists(out):
