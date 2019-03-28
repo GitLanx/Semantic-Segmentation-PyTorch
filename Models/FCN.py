@@ -291,21 +291,21 @@ if __name__ == "__main__":
     import torch
     import time
     model = FCN32s(21)
-    print(f'==> Testing {model.__name__} with PyTorch')
+    print(f'==> Testing {model.__class__.__name__} with PyTorch')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # torch.backends.cudnn.benchmark = True
 
     model = model.to(device)
     model.eval()
 
-    x = torch.Tensor((1, 3, 480, 640))
+    x = torch.Tensor(1, 3, 500, 500)
     x = x.to(device)
 
-    # torch.cuda.synchronize()
+    torch.cuda.synchronize()
     t_start = time.time()
     for i in range(10):
         model(x)
-    # torch.cuda.synchronize()
+    torch.cuda.synchronize()
     elapsed_time = time.time() - t_start
 
-    print(f'Elapsed time: {elapsed_time:.2f} [s / 10 evals]')
-    print(f'Hz: {(10 / elapsed_time):.2f} [hz]')
+    print(f'Speed: {(elapsed_time / 10) * 1000:.2f} ms')
