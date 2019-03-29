@@ -7,7 +7,7 @@ model|acc|acc_cls|mean_iu|params
 FCN32s<sup>1</sup>|89.37%|68.53%|56.93%|lr=1.0e-10<br>reduction='sum'
 FCN32s<sup>2</sup>|90.22%|74.44%|62.01%|lr=1.0e-10<br>reduction='sum'
 FCN32s(original)|-|-|63.6%|
-FCN8sAtOnce<sup>1</sup>|89.55%|68.98%|57.37%|lr=1.0e-10<br>reduction='sum'
+FCN8sAtOnce<sup>1</sup>|89.37%|67.36%|56.64%|lr=1.0e-10<br>reduction='sum'
 FCN8sAtOnce(original|-|-|65.4%|
 [1]train on voc2012, eval on voc2012  
 [2]train on sbd, eval on seg11valid
