@@ -147,7 +147,7 @@ class Trainer:
         acc, acc_cls, mean_iou, fwavacc, _ = val_metrics.get_scores()
         metrics = [acc, acc_cls, mean_iou, fwavacc]
 
-        print(f'\n{self.epoch}' + f'loss: {val_loss_meter.avg}, mIoU: {mean_iou}')
+        print(f'\nEpoch: {self.epoch}', f'loss: {val_loss_meter.avg}, mIoU: {mean_iou}')
 
         out = osp.join(self.out, 'visualization_viz')
         if not osp.exists(out):
