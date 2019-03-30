@@ -75,10 +75,10 @@ class FCN32s(nn.Module):
         fc = []
         fc.append(nn.Conv2d(512, 4096, 7))
         fc.append(nn.ReLU(inplace=True))
-        fc.append(nn.Dropout2d())
+        fc.append(nn.Dropout(p=0.5))
         fc.append(nn.Conv2d(4096, 4096, 1))
         fc.append(nn.ReLU(inplace=True))
-        fc.append(nn.Dropout2d())
+        fc.append(nn.Dropout(p=0.5))
         self.fc = nn.Sequential(*fc)
 
         self.score_fr = nn.Conv2d(4096, n_classes, 1)
@@ -116,6 +116,13 @@ class FCN32s(nn.Module):
 
         return out
 
+    def get_parameters(self, bias=False):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                if bias:
+                    yield m.bias
+                else:
+                    yield m.weight
 
 class FCN8sAtOnce(nn.Module):
     def __init__(self, n_classes):
