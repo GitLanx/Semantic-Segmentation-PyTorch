@@ -104,8 +104,8 @@ class FCN32s(nn.Module):
 
         for l1, l2 in zip(vgg16.classifier.children(), self.fc):
             if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                l2.weight.data = l1.weight.data.view(l2.weight.size())
-                l2.bias.data = l1.bias.data.view(l2.bias.size())
+                l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
+                l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
 
     def forward(self, x):
         out = self.features(x)
@@ -228,19 +228,17 @@ class FCN8sAtOnce(nn.Module):
                 if isinstance(ll1, nn.Conv2d) and isinstance(ll2, nn.Conv2d):
                     assert ll1.weight.size() == ll2.weight.size()
                     assert ll1.bias.size() == ll2.bias.size()
-                    ll2.weight.data = ll1.weight.data
-                    ll2.bias.data = ll1.bias.data
+                    ll2.weight.data.copy_(ll1.weight.data)
+                    ll2.bias.data.copy_(ll1.bias.data)
 
         for l1, l2 in zip(vgg16.classifier.children(), self.fc):
             if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                l2.weight.data = l1.weight.data.view(l2.weight.size())
-                l2.bias.data = l1.bias.data.view(l2.bias.size())
+                l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
+                l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
 
     def forward(self, x):
         pool3 = self.features1(x)       # 1/8
-
         pool4 = self.features2(pool3)   # 1/16
-
         pool5 = self.features3(pool4)     # 1/32
         fc = self.fc(pool5)
         score_fr = self.score_fr(fc)
@@ -259,40 +257,6 @@ class FCN8sAtOnce(nn.Module):
         out = out[:, :, 31:31 + x.size()[2], 31:31 + x.size()[3]].contiguous()
 
         return out
-
-    # def copy_params_from_vgg16(self, vgg16):
-    #     features = [
-    #         self.conv1_1, self.relu1_1,
-    #         self.conv1_2, self.relu1_2,
-    #         self.pool1,
-    #         self.conv2_1, self.relu2_1,
-    #         self.conv2_2, self.relu2_2,
-    #         self.pool2,
-    #         self.conv3_1, self.relu3_1,
-    #         self.conv3_2, self.relu3_2,
-    #         self.conv3_3, self.relu3_3,
-    #         self.pool3,
-    #         self.conv4_1, self.relu4_1,
-    #         self.conv4_2, self.relu4_2,
-    #         self.conv4_3, self.relu4_3,
-    #         self.pool4,
-    #         self.conv5_1, self.relu5_1,
-    #         self.conv5_2, self.relu5_2,
-    #         self.conv5_3, self.relu5_3,
-    #         self.pool5,
-    #     ]
-    #     for l1, l2 in zip(vgg16.features, features):
-    #         if isinstance(l1, nn.Conv2d) and isinstance(l2, nn.Conv2d):
-    #             assert l1.weight.size() == l2.weight.size()
-    #             assert l1.bias.size() == l2.bias.size()
-    #             l2.weight.data.copy_(l1.weight.data)
-    #             l2.bias.data.copy_(l1.bias.data)
-    #     for i, name in zip([0, 3], ['fc6', 'fc7']):
-    #         l1 = vgg16.classifier[i]
-    #         l2 = getattr(self, name)
-    #         l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
-    #         l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
-
 
 if __name__ == "__main__":
     import torch
