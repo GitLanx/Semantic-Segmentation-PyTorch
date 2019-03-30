@@ -78,7 +78,7 @@ class Trainer:
             if weight:
                 weight = torch.Tensor(weight).to(self.device)
 
-            loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
+            loss = F.cross_entropy(score, target, weight=weight, reduction='sum', ignore_index=-1)
             # loss /= len(data)
             loss_data = loss.data.item()
             train_loss_meter.update(loss_data)
