@@ -1,13 +1,9 @@
 import os
-import collections
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from .baseloader import BaseLoader
-import torch
-from torch.utils import data
-from torchvision import transforms
 
 
 class VOCLoader(BaseLoader):
@@ -91,47 +87,6 @@ class VOCLoader(BaseLoader):
                 lab >>= 3
         palette = np.array(palette).reshape([-1, 3]).astype(np.uint8)
         return palette
-
-    def encode_segmap(self, mask):
-        """Encode segmentation label images as pascal classes
-        Args:
-            mask (np.ndarray): raw segmentation label image of dimension
-              (M, N, 3), in which the Pascal classes are encoded as colours.
-        Returns:
-            (np.ndarray): class map with dimensions (M,N), where the value at
-            a given location is the integer denoting the class index.
-        """
-        mask = mask.astype(int)
-        label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int16)
-        for ii, label in enumerate(self.getpalette()):
-            label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
-        label_mask = label_mask.astype(int)
-        return label_mask
-
-    def decode_segmap(self, label_mask, plot=False):
-        """Decode segmentation class labels into a color image
-        Args:
-            label_mask (np.ndarray): an (M,N) array of integer values denoting
-              the class label at each spatial location.
-            plot (bool, optional): whether to show the resulting color image
-              in a figure.
-        Returns:
-            (np.ndarray, optional): the resulting decoded color image.
-        """
-        label_colours = self.getpalette()
-        r = label_mask.copy()
-        g = label_mask.copy()
-        b = label_mask.copy()
-        for ll in range(0, self.n_classes):
-            r[label_mask == ll] = label_colours[ll, 0]
-            g[label_mask == ll] = label_colours[ll, 1]
-            b[label_mask == ll] = label_colours[ll, 2]
-        rgb = np.zeros((label_mask.shape[0], label_mask.shape[1], 3))
-        rgb[:, :, 0] = r / 255.0
-        rgb[:, :, 1] = g / 255.0
-        rgb[:, :, 2] = b / 255.0
-
-        return rgb
 
 class SBDLoader(BaseLoader):
     """Semantic Boundaries Dataset(SBD) dataset loader.
@@ -268,21 +223,37 @@ class VOC11Val(BaseLoader):
         img, lbl = self.transform(img, lbl)
         return img, lbl
 
-# Leave code for debugging purposes
-# import ptsemseg.augmentations as aug
-if __name__ == '__main__':
-    local_path = r'E:\dataset\VOC2012'
-    bs = 4
-    # augs = aug.Compose([aug.RandomRotate(10), aug.RandomHorizontallyFlip()])
-    dst = VOCLoader(root=local_path, is_transform=True)
-    trainloader = data.DataLoader(dst, batch_size=bs)
-    for i, data in enumerate(trainloader):
-        imgs, labels = data
-        imgs = imgs.numpy()[:, ::-1, :, :]
-        imgs = np.transpose(imgs, [0,2,3,1])
-        f, axarr = plt.subplots(bs, 2)
-        for j in range(bs):
-            axarr[j][0].imshow(imgs[j])
-            axarr[j][1].imshow(dst.decode_segmap(labels.numpy()[j]))
-        plt.show()
+# Test code
+# if __name__ == '__main__':
+#     from torch.utils.data import DataLoader
+#     root = r'D:\Datasets\VOCdevkit\VOC2012'
+#     batch_size = 2
+#     loader = VOCLoader(root=root, img_size=(500, 500))
+#     test_loader = DataLoader(loader, batch_size=batch_size, shuffle=True)
+
+#     palette = test_loader.dataset.getpalette()
+#     fig, axes = plt.subplots(batch_size, 2, subplot_kw={'xticks': [], 'yticks': []})
+#     fig.subplots_adjust(left=0.03, right=0.97, hspace=0.2, wspace=0.05)
+
+#     for imgs, labels in test_loader:
+#         imgs = imgs.numpy()
+#         imgs = np.transpose(imgs, [0,2,3,1])
+#         labels = labels.numpy()
+
+#         for i in range(batch_size):
+#             axes[i][0].imshow(imgs[i])
+
+#             mask_unlabeled = labels[i] == -1
+#             viz_unlabeled = (
+#                 np.zeros((labels[i].shape[0], labels[i].shape[1], 3))
+#             ).astype(np.uint8)
+
+#             lbl_viz = palette[labels[i]]
+#             lbl_viz[labels[i] == -1] = (0, 0, 0)
+#             lbl_viz[mask_unlabeled] = viz_unlabeled[mask_unlabeled]
+
+#             axes[i][1].imshow(lbl_viz.astype(np.uint8))
+#         plt.show()
+#         break
+
 
