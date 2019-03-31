@@ -4,7 +4,7 @@
 ### PASCAL VOC
 model|acc|acc_cls|mean_iu|params
 ---|---|---|---|---
-FCN32s<sup>1</sup>|89.37%|68.53%|56.93%|lr=1.0e-10<br>reduction='sum'
+FCN32s<sup>1</sup>|89.00%|69.68%|56.49%|lr=1.0e-10<br>reduction='sum'
 FCN32s<sup>2</sup>|90.22%|74.44%|62.01%|lr=1.0e-10<br>reduction='sum'
 FCN32s(original)|-|-|63.6%|
 FCN8sAtOnce<sup>1</sup>|89.37%|67.36%|56.64%|lr=1.0e-10<br>reduction='sum'
