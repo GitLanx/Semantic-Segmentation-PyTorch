@@ -258,6 +258,15 @@ class FCN8sAtOnce(nn.Module):
 
         return out
 
+    def get_parameters(self, bias=False):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                if bias:
+                    yield m.bias
+                else:
+                    yield m.weight
+
+
 if __name__ == "__main__":
     import torch
     import time
