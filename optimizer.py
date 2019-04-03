@@ -13,13 +13,8 @@ def get_optimizer(args, model):
                 lr=args.lr,
                 momentum=args.beta1,
                 weight_decay=args.weight_decay)
-        elif args.model.lower() == 'fcn32s':
-            optim = torch.optim.SGD(
-                [{'params': model.get_parameters(bias=False)},
-                 {'params': model.get_parameters(bias=True), 'lr': args.lr * 2, 'weight_decay': 0}],
-                lr=args.lr,
-                momentum=args.beta1,
-                weight_decay=args.weight_decay)
+        elif args.model.lower() in ['fcn32s', 'fcn8s']:
+            optim = fcn_optim(model, args)
         else:
             optim = torch.optim.SGD(
                 model.parameters(),
@@ -35,6 +30,18 @@ def get_optimizer(args, model):
             weight_decay=args.weight_decay)
     
     return optim
+
+def fcn_optim(model, args):
+    """optimizer for fcn32s and fcn8s
+    """
+    optim = torch.optim.SGD(
+        [{'params': model.get_parameters(bias=False)},
+         {'params': model.get_parameters(bias=True), 'lr': args.lr * 2, 'weight_decay': 0}],
+         lr=args.lr,
+         momentum=args.beta1,
+         weight_decay=args.weight_decay)
+    return optim
+
 
 def get_parameters(args, model, bias=False, final=False):
     """Adapted from:

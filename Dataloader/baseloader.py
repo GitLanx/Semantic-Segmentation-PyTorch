@@ -37,7 +37,7 @@ class BaseLoader(data.Dataset):
             )
         else:
             self.tf = transforms.Compose(
-            [transforms.ToTensor()]
+                [transforms.ToTensor()]
             )
             self.untf = transforms.Compose(
                 [transforms.Normalize([0, 0, 0], [1, 1, 1])]
