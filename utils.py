@@ -342,7 +342,7 @@ def get_scheduler(optimizer, opt):
     elif opt.lr_policy is None:
         scheduler = None
     else:
-        return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
+        return NotImplementedError(f'learning rate policy {opt.lr_policy} is not implemented')
     return scheduler
 
 # Adapted from:
