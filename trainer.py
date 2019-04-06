@@ -58,7 +58,7 @@ class Trainer:
         if self.epoch % self.val_epoch == 0 or self.epoch == 1:
             self.validate()
             # lr = self.optim.param_groups[0]['lr']
-            # print('learning rate = %.7f' % lr)
+            # print(f'learning rate = {lr:.7f}')
 
         self.model.train()
         train_metrics = runningScore(self.n_classes)
@@ -66,7 +66,7 @@ class Trainer:
 
         for data, target in tqdm.tqdm(
                 self.train_loader, total=len(self.train_loader),
-                desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
+                desc=f'Train epoch={self.epoch}', ncols=80, leave=False):
 
             assert self.model.training
 
@@ -78,7 +78,7 @@ class Trainer:
             if weight:
                 weight = torch.Tensor(weight).to(self.device)
 
-            loss = F.cross_entropy(score, target, weight=weight, reduction='sum', ignore_index=-1)
+            loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
             # loss /= len(data)
             loss_data = loss.data.item()
             train_loss_meter.update(loss_data)
