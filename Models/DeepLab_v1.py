@@ -92,6 +92,22 @@ class DeepLabLargeFOV(nn.Module):
         out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
 
+    def get_parameters(self, bias=False, score=False):
+        if score:
+            if bias:
+                yield self.score.bias
+            else:
+                yield self.score.weight
+        else:
+            for module in [self.features, self.fc]:
+                for m in module.modules():
+                    if isinstance(m, nn.Conv2d):
+                        if bias:
+                            yield m.bias
+                        else:
+                            yield m.weight
+            
+
 
 class DeepLabMScLargeFOV(nn.Module):
     """Adapted from official implementation:
@@ -111,8 +127,6 @@ class DeepLabMScLargeFOV(nn.Module):
         # from image to classifier
         self.MSc1 = self._msc(in_channels=3, stride=8)
         self.MSc1_score = nn.Conv2d(128, n_classes, 1)
-        nn.init.normal_(self.MSc1_score.weight, std=0.01)
-        nn.init.constant_(self.MSc1_score.bias, 0)
 
         # Network
         features1 = []
@@ -126,8 +140,6 @@ class DeepLabMScLargeFOV(nn.Module):
         # first pool to classifier
         self.MSc2 = self._msc(in_channels=64, stride=4)
         self.MSc2_score = nn.Conv2d(128, n_classes, 1)
-        nn.init.normal_(self.MSc2_score.weight, std=0.01)
-        nn.init.constant_(self.MSc2_score.bias, 0)
 
         # Network
         features2 = []
@@ -141,8 +153,6 @@ class DeepLabMScLargeFOV(nn.Module):
         # second pool to classifier
         self.MSc3 = self._msc(in_channels=128, stride=2)
         self.MSc3_score = nn.Conv2d(128, n_classes, 1)
-        nn.init.normal_(self.MSc3_score.weight, std=0.01)
-        nn.init.constant_(self.MSc3_score.bias, 0)
 
         # Network
         features3 = []
@@ -158,8 +168,6 @@ class DeepLabMScLargeFOV(nn.Module):
         # third pool to classifier
         self.MSc4 = self._msc(in_channels=256, stride=1)
         self.MSc4_score = nn.Conv2d(128, n_classes, 1)
-        nn.init.normal_(self.MSc4_score.weight, std=0.01)
-        nn.init.constant_(self.MSc4_score.bias, 0)
 
         # Network
         features4 = []
@@ -175,8 +183,6 @@ class DeepLabMScLargeFOV(nn.Module):
         # fourth pool to classifier
         self.MSc5 = self._msc(in_channels=512, stride=1)
         self.MSc5_score = nn.Conv2d(128, n_classes, 1)
-        nn.init.normal_(self.MSc5_score.weight, std=0.01)
-        nn.init.constant_(self.MSc5_score.bias, 0)
 
         # Network
         features5 = []
@@ -234,8 +240,10 @@ class DeepLabMScLargeFOV(nn.Module):
                     nn.init.normal_(m.weight, std=0.001)
                     nn.init.constant_(m.bias, 0)
 
-        nn.init.normal_(self.score.weight, std=0.01)
-        nn.init.constant_(self.score.bias, 0)
+        for m in [self.MSc1_score, self.MSc2_score, self.MSc3_score,
+                  self.MSc4_score, self.MSc5_score, self.score]:
+            nn.init.normal_(m.weight, std=0.01)
+            nn.init.constant_(m.bias, 0)
 
     def _msc(self, in_channels, stride):
         return nn.Sequential(
@@ -270,6 +278,23 @@ class DeepLabMScLargeFOV(nn.Module):
         out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
 
+    def get_parameters(self, bias=False, score=False):
+        if score:
+            if bias:
+                yield self.score.bias
+            else:
+                yield self.score.weight
+        else:
+            for module in [self.features1, self.features2, self.features3, self.features4,
+                           self.features5, self.MSc1, self.MSc2, self.MSc3, self.MSc4, self.MSc5,
+                           self.MSc1_score, self.MSc2_score, self.MSc3_score, self.MSc4_score,
+                           self.MSc5_score, self.fc]:
+                for m in module.modules():
+                    if isinstance(m, nn.Conv2d):
+                        if bias:
+                            yield m.bias
+                        else:
+                            yield m.weight
 
 if __name__ == "__main__":
     import torch
