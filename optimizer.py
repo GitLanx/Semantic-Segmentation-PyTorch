@@ -4,17 +4,12 @@ import torch.nn as nn
 
 def get_optimizer(args, model):
     if args.optim.lower() == 'sgd':
-        if args.model.lower() == 'deeplab-largefov':
-            optim = torch.optim.SGD(
-                [{'params': get_parameters(args, model, bias=False, final=False)},
-                 {'params': get_parameters(args, model, bias=True, final=False), 'lr': args.lr * 2, 'weight_decay': 0},
-                 {'params': get_parameters(args, model, bias=False, final=True), 'lr': args.lr * 10},
-                 {'params': get_parameters(args, model, bias=True, final=True), 'lr': args.lr * 20, 'weight_decay': 0}],
-                lr=args.lr,
-                momentum=args.beta1,
-                weight_decay=args.weight_decay)
-        elif args.model.lower() in ['fcn32s', 'fcn8s']:
+        if args.model.lower() in ['fcn32s', 'fcn8s']:
             optim = fcn_optim(model, args)
+        elif args.model.lower() == 'deeplab-largefov':
+            optim = deeplabfov_optim(model, args)
+        elif args.model.lower() == 'deeplab-msclargefov':
+            optim = deeplabmsclargefov_optim(model, args)
         else:
             optim = torch.optim.SGD(
                 model.parameters(),
@@ -42,25 +37,28 @@ def fcn_optim(model, args):
          weight_decay=args.weight_decay)
     return optim
 
-
-def get_parameters(args, model, bias=False, final=False):
-    """Adapted from:
-
-    https://github.com/BardOfCodes/pytorch_deeplab_large_fov/blob/master/utils.py
+def deeplabfov_optim(model, args):
+    """optimizer for deeplab-largefov
     """
-    if final:
-        for m in model.modules():
-            if isinstance(m, nn.Conv2d):
-                if m.out_channels == args.n_classes:
-                    if bias:
-                        yield m.bias
-                    else:
-                        yield m.weight
-    else:
-        for m in model.modules():
-            if isinstance(m, nn.Conv2d):
-                if not m.out_channels == args.n_classes: 
-                    if bias:
-                        yield m.bias
-                    else:
-                        yield m.weight
+    optim = torch.optim.SGD(
+        [{'params': model.get_parameters(bias=False, score=False)},
+         {'params': model.get_parameters(bias=True, score=False), 'lr': args.lr * 2, 'weight_decay': 0},
+         {'params': model.get_parameters(bias=False, score=True), 'lr': args.lr * 10},
+         {'params': model.get_parameters(bias=True, score=True), 'lr': args.lr * 20, 'weight_decay': 0}],
+         lr=args.lr,
+         momentum=args.beta1,
+         weight_decay=args.weight_decay)
+    return optim
+
+def deeplabmsclargefov_optim(model, args):
+    """optimizer for deeplab-msclargefov
+    """
+    optim = torch.optim.SGD(
+        [{'params': model.get_parameters(bias=False, score=False)},
+         {'params': model.get_parameters(bias=True, score=False), 'lr': args.lr * 2, 'weight_decay': 0},
+         {'params': model.get_parameters(bias=False, score=True), 'lr': args.lr * 10},
+         {'params': model.get_parameters(bias=True, score=True), 'lr': args.lr * 20, 'weight_decay': 0}],
+         lr=args.lr,
+         momentum=args.beta1,
+         weight_decay=args.weight_decay)
+    return optim
