@@ -6,10 +6,8 @@ def get_optimizer(args, model):
     if args.optim.lower() == 'sgd':
         if args.model.lower() in ['fcn32s', 'fcn8s']:
             optim = fcn_optim(model, args)
-        elif args.model.lower() == 'deeplab-largefov':
-            optim = deeplabfov_optim(model, args)
-        elif args.model.lower() == 'deeplab-msclargefov':
-            optim = deeplabmsclargefov_optim(model, args)
+        elif args.model.lower() == ['deeplab-largefov', 'deeplab-msclargefov', 'deeplab-aspp']:
+            optim = deeplab_optim(model, args)
         else:
             optim = torch.optim.SGD(
                 model.parameters(),
@@ -37,21 +35,8 @@ def fcn_optim(model, args):
          weight_decay=args.weight_decay)
     return optim
 
-def deeplabfov_optim(model, args):
-    """optimizer for deeplab-largefov
-    """
-    optim = torch.optim.SGD(
-        [{'params': model.get_parameters(bias=False, score=False)},
-         {'params': model.get_parameters(bias=True, score=False), 'lr': args.lr * 2, 'weight_decay': 0},
-         {'params': model.get_parameters(bias=False, score=True), 'lr': args.lr * 10},
-         {'params': model.get_parameters(bias=True, score=True), 'lr': args.lr * 20, 'weight_decay': 0}],
-         lr=args.lr,
-         momentum=args.beta1,
-         weight_decay=args.weight_decay)
-    return optim
-
-def deeplabmsclargefov_optim(model, args):
-    """optimizer for deeplab-msclargefov
+def deeplab_optim(model, args):
+    """optimizer for deeplab-v1 and deeplab-v2
     """
     optim = torch.optim.SGD(
         [{'params': model.get_parameters(bias=False, score=False)},
