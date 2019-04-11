@@ -11,6 +11,7 @@ from Models import model_loader
 from trainer import Trainer
 from utils import get_scheduler
 from optimizer import get_optimizer
+from augmentations import get_augmentations
 
 here = osp.dirname(osp.abspath(__file__))
 
@@ -19,23 +20,27 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--model', type=str, default='fcn32s', help='model to train for')
+    parser.add_argument('--model', type=str, default='deeplab-v3', help='model to train for')
     parser.add_argument('--epochs', type=int, default=100, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
-    parser.add_argument('--batch_size', type=int, default=1, help='number of batch size')
-    parser.add_argument('--img_size', type=tuple, default=None, help='resize images to proper size')
+    parser.add_argument('--batch_size', type=int, default=2, help='number of batch size')
+    parser.add_argument('--img_size', type=tuple, default=(513, 513), help='resize images to proper size')
     parser.add_argument('--dataset_type', type=str, default='voc', help='choose which dataset to use')
-    parser.add_argument('--train_root', type=str, default='D:\Datasets\VOCdevkit\VOC2012', help='path to train.txt')
+    parser.add_argument('--dataset_root', type=str, default='D:\Datasets\VOCdevkit\VOC2012', help='path to dataset')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
     parser.add_argument('--resume', help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
-    parser.add_argument('--lr', type=float, default=1e-10, help='learning rate')
-    parser.add_argument('--lr_policy', type=str, default=None, help='learning rate policy')
+    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+    parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
-    parser.add_argument('--beta1', type=float, default=0.99, help='momentum for sgd, beta1 for adam')
+    parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
     parser.add_argument('--lr_decay_step', type=float, default=20, help='step size for step learning policy')
     parser.add_argument('--lr_power', type=int, default=0.9, help='power parameter for poly learning policy')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use pretrained models')
+
+    parser.add_argument('--crop_size', type=tuple, default=(513, 513), help='crop sizes of images')
+    parser.add_argument('--flip', type=bool, default=True, help='whether to use horizontal flip')
+
     args = parser.parse_args()
 
     now = datetime.datetime.now()
@@ -54,11 +59,14 @@ def main():
 
     # 1. dataset
 
-    root = args.train_root
+    root = args.dataset_root
     loader = get_loader(args.dataset_type)
 
+    augmentations = get_augmentations(args)
+
     train_loader = DataLoader(
-        loader(root, n_classes=args.n_classes, split='train', img_size=args.img_size, pretrained=args.pretrained),
+        loader(root, n_classes=args.n_classes, split='train', img_size=args.img_size, augmentations=augmentations,
+               pretrained=args.pretrained),
         batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(
         loader(root, n_classes=args.n_classes, split='val', img_size=args.img_size, pretrained=args.pretrained),
@@ -69,12 +77,6 @@ def main():
     model = model.to(device)
 
     # 3. optimizer
-    # if args.optim.lower() == 'sgd':
-    #     optim = torch.optim.SGD(
-    #         model.parameters(),
-    #         lr=args.lr,
-    #         momentum=args.beta1,
-    #         weight_decay=args.weight_decay)
     optim = get_optimizer(args, model)
     if args.resume:
         optim.load_state_dict(ckpt['optim_state_dict'])

@@ -14,12 +14,13 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='fcn32s')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/fcn32s_20190327_095051/model_best.pth.tar',help='Model path')
-    parser.add_argument('--dataset_type', type=str, default='camvid',help='type of dataset')
-    parser.add_argument('--dataset', type=str, default='D:/Datasets/CamVid',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=(320, 320), help='resize images')
-    parser.add_argument('--n_classes', type=int, default=11, help='number of classes')
+    parser.add_argument('--model', type=str, default='deeplab-largefov')
+    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/deeplab-largefov_20190404_153404/model_best.pth.tar',help='Model path')
+    parser.add_argument('--dataset_type', type=str, default='voc',help='type of dataset')
+    parser.add_argument('--dataset', type=str, default='D:\Datasets\VOCdevkit\VOC2012',help='path to dataset')
+    parser.add_argument('--img_size', type=tuple, default=(513, 513), help='resize images')
+    parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
+    parser.add_argument('--pretrained', type=bool, default=True, help='should be set the same as train.py')
     args = parser.parse_args()
 
     model_file = args.model_file
@@ -28,7 +29,7 @@ def main():
 
     loader = get_loader(args.dataset_type)
     val_loader = DataLoader(
-        loader(root, n_classes=n_classes, split='test', img_size=args.img_size, pretrained=True),
+        loader(root, n_classes=n_classes, split='val', img_size=args.img_size, pretrained=args.pretrained),
         batch_size=1, shuffle=False, num_workers=4)
 
     model, _, _ = Models.model_loader(args.model, n_classes, resume=None)
