@@ -157,7 +157,7 @@ class ResNet(nn.Module):
 
         # for output_stride = 8
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 1))
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4, multi_grid=(1, 2, 4))
 
         self._initialize_weights()
 
