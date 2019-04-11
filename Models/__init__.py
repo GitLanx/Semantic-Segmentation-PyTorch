@@ -11,9 +11,8 @@ import torch
 from torchvision import models
 
 VALID_MODEL = ['fcn32s', 'fcn8s', 'unet', 'segnet', 'deeplab-largefov',
-               'deeplab-msclargefov', 'deeplab-aspp', 'deeplabv3', 'deeplabv3+',
-               'dilation8',
-               'pspnet']
+               'deeplab-msclargefov', 'deeplab-aspp', 'deeplab-v3', 'deeplab-v3+',
+               'dilation8', 'pspnet']
 
 def model_loader(model_name, n_classes, resume):
     model_name = model_name.lower()
@@ -31,9 +30,9 @@ def model_loader(model_name, n_classes, resume):
         model = DeepLabMScLargeFOV(n_classes=n_classes)
     elif model_name == 'deeplab-aspp':
         model = DeepLabASPP(n_classes=n_classes)
-    elif model_name == 'deeplabv3':
+    elif model_name == 'deeplab-v3':
         model = DeepLabV3(n_classes=n_classes)
-    elif model_name == 'deeplabv3+':
+    elif model_name == 'deeplab-v3+':
         model = DeepLabV3Plus(n_classes=n_classes)
     elif model_name == 'dilation8':
         model = Dilation8(n_classes=n_classes)
