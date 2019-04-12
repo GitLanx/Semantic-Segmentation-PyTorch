@@ -14,11 +14,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='deeplab-largefov')
-    parser.add_argument('--model_file', type=str, default='D:/lx/Semantic-Segmentation-PyTorch/logs/deeplab-largefov_20190404_153404/model_best.pth.tar',help='Model path')
-    parser.add_argument('--dataset_type', type=str, default='voc',help='type of dataset')
-    parser.add_argument('--dataset', type=str, default='D:\Datasets\VOCdevkit\VOC2012',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=(513, 513), help='resize images')
+    parser.add_argument('--model', type=str, default='fcn32s')
+    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/fcn32_20190304_142225/model_best.pth.tar',help='Model path')
+    parser.add_argument('--dataset_type', type=str, default='voc11',help='type of dataset')
+    parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOCdevkit/VOC2012',help='path to dataset')
+    parser.add_argument('--img_size', type=tuple, default=None, help='resize images')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
     parser.add_argument('--pretrained', type=bool, default=True, help='should be set the same as train.py')
     args = parser.parse_args()
@@ -67,22 +67,24 @@ def main():
                     n_classes=n_classes, dataloader=val_loader)
                 visualizations.append(viz)
     acc, acc_cls, mean_iu, fwavacc, cls_iu = metrics.get_scores()
-    print('''Accuracy: {0}
-Accuracy Class: {1}
-Mean IoU: {2}
-FWAV Accuracy: {3}'''.format(acc * 100,
-                             acc_cls * 100,
-                             mean_iu * 100,
-                             fwavacc * 100))
-    
+    print('''
+Accuracy:       {0:.2f}
+Accuracy Class: {1:.2f}
+Mean IoU:       {2:.2f}
+FWAV Accuracy:  {3:.2f}'''.format(acc * 100,
+                                  acc_cls * 100,
+                                  mean_iu * 100,
+                                  fwavacc * 100) + '\n')
+
     class_name = val_loader.dataset.class_names
     if class_name is not None:
         for index, value in enumerate(cls_iu.values()):
-            print(class_name[index], value * 100)
+            offset = 20 - len(class_name[index])
+            print(class_name[index] + ' ' * offset + f'{value * 100:>.2f}')
     else:
-        print("you don't specify class_names, use number of class instead")
+        print("\nyou don't specify class_names, use number instead")
         for key, value in cls_iu.items():
-            print(key, value * 100)
+            print(key, f'{value * 100:>.2f}')
 
     viz = get_tile_image(visualizations)
     # img = Image.fromarray(viz)
