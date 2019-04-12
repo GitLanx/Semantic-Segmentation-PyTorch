@@ -186,6 +186,15 @@ class VOC11Val(BaseLoader):
       class_weight: useful in unbalanced datasets.
       pretrained: whether to use pretrained models
     """
+    class_names = np.array([
+        'background', 'aeroplane', 'bicycle',
+        'bird', 'boat', 'bottle', 'bus',
+        'car', 'cat', 'chair', 'cow', 'diningtable',
+        'dog', 'horse', 'motorbike', 'person',
+        'potted plant', 'sheep', 'sofa', 'train',
+        'tv/monitor',
+    ])
+
     def __init__(
         self,
         root,
@@ -207,6 +216,9 @@ class VOC11Val(BaseLoader):
 
         print(f"Found {len(self.file_list)} {split} images")
 
+    def __len__(self):
+        return len(self.file_list)
+
     def __getitem__(self, index):
         img_name = self.file_list[index]
         img_path = os.path.join(self.root, "JPEGImages", img_name + ".jpg")
@@ -222,6 +234,24 @@ class VOC11Val(BaseLoader):
 
         img, lbl = self.transform(img, lbl)
         return img, lbl
+    
+    def getpalette(self):
+        n = self.n_classes
+        palette = [0]*(n*3)
+        for j in range(0, n):
+            lab = j
+            palette[j*3+0] = 0
+            palette[j*3+1] = 0
+            palette[j*3+2] = 0
+            i = 0
+            while (lab > 0):
+                palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
+                palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
+                palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
+                i = i + 1
+                lab >>= 3
+        palette = np.array(palette).reshape([-1, 3]).astype(np.uint8)
+        return palette
 
 # Test code
 # if __name__ == '__main__':
