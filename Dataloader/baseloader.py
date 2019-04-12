@@ -5,6 +5,9 @@ from torch.utils import data
 from torchvision import transforms
 
 class BaseLoader(data.Dataset):
+    # specify class_name if available
+    class_name = None
+
     def __init__(
         self,
         root,
@@ -25,6 +28,7 @@ class BaseLoader(data.Dataset):
         self.class_weight = class_weight
 
         if pretrained:
+            # if use pretrained model, substract mean and divide standard deviation
             self.mean = torch.tensor([0.485, 0.456, 0.406])
             self.std = torch.tensor([0.229, 0.224, 0.225])
             self.tf = transforms.Compose(
@@ -36,6 +40,7 @@ class BaseLoader(data.Dataset):
                                     (1.0 / self.std).tolist())]
             )
         else:
+            # if not use pretrained model, only scale images to [0, 1]
             self.tf = transforms.Compose(
                 [transforms.ToTensor()]
             )
