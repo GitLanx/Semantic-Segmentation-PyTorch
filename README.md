@@ -5,10 +5,10 @@
 model|acc|acc_cls|mean_iu|params
 ---|---|---|---|---
 FCN32s<sup>1</sup>|89.00%|69.68%|56.49%|lr=1.0e-10<br>reduction='sum'
-FCN32s<sup>2</sup>|90.22%|74.44%|62.01%|lr=1.0e-10<br>reduction='sum'
+FCN32s<sup>2</sup>|90.17%|75.56%|61.81%|lr=1.0e-10<br>reduction='sum'
 FCN32s(original)|-|-|63.6%|
 FCN8sAtOnce<sup>1</sup>|89.30%|67.40%|56.51%|lr=1.0e-10<br>reduction='sum'
-FCN8sAtOnce(original|-|-|65.4%|
+FCN8sAtOnce(original)|-|-|65.4%|
 DeepLab-LargeFov<sup>1</sup>|89.10%|64.37%|54.19%|lr=0.001
 DeepLab-MscLargeFov<sup>1</sup>|88.51%|67.04%|53.86%|lr=0.001
 DeepLab-ASPP<sup>1</sup>|88.76%|71.07%|55.27%|lr=0.001
