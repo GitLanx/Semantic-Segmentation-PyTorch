@@ -1,6 +1,6 @@
 matplotlib==3.0.2
 numpy==1.15.4
-PyYAML==3.13
+PyYAML
 scikit-image==0.14.1
 scipy==1.2.1
 tqdm==4.31.1
