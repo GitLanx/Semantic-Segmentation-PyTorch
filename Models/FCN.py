@@ -103,9 +103,8 @@ class FCN32s(nn.Module):
         self.features.load_state_dict(state_dict)
 
         for l1, l2 in zip(vgg16.classifier.children(), self.fc):
-            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
-                l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
+            l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
+            l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
 
     def forward(self, x):
         out = self.features(x)
@@ -232,9 +231,8 @@ class FCN8sAtOnce(nn.Module):
                     ll2.bias.data.copy_(ll1.bias.data)
 
         for l1, l2 in zip(vgg16.classifier.children(), self.fc):
-            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
-                l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
+            l2.weight.data.copy_(l1.weight.data.view(l2.weight.size()))
+            l2.bias.data.copy_(l1.bias.data.view(l2.bias.size()))
 
     def forward(self, x):
         pool3 = self.features1(x)       # 1/8
