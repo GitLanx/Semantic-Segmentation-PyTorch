@@ -21,13 +21,12 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--model', type=str, default='deeplab-largefov', help='model to train for')
-    parser.add_argument('--epochs', type=int, default=100, help='total epochs')
+    parser.add_argument('--epochs', type=int, default=30, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
-    parser.add_argument('--batch_size', type=int, default=8, help='number of batch size')
-    parser.add_argument('--img_size', type=tuple, default=(513, 513), help='resize images to proper size')
-    parser.add_argument('--dataset_type', type=str, default='voc', help='choose which dataset to use')
-    # parser.add_argument('--dataset_root', type=str, default='/home/ecust/Datasets/PASCAL VOC/benchmark_RELEASE', help='path to dataset')
-    parser.add_argument('--dataset_root', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOCdevkit/VOC2012', help='path to dataset')
+    parser.add_argument('--batch_size', type=int, default=16, help='number of batch size')
+    parser.add_argument('--img_size', type=tuple, default=None, help='resize images to proper size')
+    parser.add_argument('--dataset_type', type=str, default='sbd', help='choose which dataset to use')
+    parser.add_argument('--dataset_root', type=str, default=r'E:\dataset\PASCAL VOC\benchmark_RELEASE', help='path to dataset')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
     parser.add_argument('--resume', default=None, help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
@@ -53,7 +52,7 @@ def main():
         yaml.safe_dump(args.__dict__, f, default_flow_style=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f'Train {args.model} using {device.type}\n')
+    print(f'Start training {args.model} using {device.type}\n')
 
     random.seed(1337)
     torch.manual_seed(1337)
