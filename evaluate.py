@@ -14,8 +14,8 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='fcn32s')
-    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/fcn32_20190304_142225/model_best.pth.tar',help='Model path')
+    parser.add_argument('--model', type=str, default='fcn8s')
+    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/fcn8s_20190412_212253/model_best.pth.tar',help='Model path')
     parser.add_argument('--dataset_type', type=str, default='voc11',help='type of dataset')
     parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOCdevkit/VOC2012',help='path to dataset')
     parser.add_argument('--img_size', type=tuple, default=None, help='resize images')
