@@ -1,5 +1,4 @@
 import random
-import numpy as np
 from PIL import Image, ImageOps
 
 
@@ -21,7 +20,7 @@ class RandomFlip:
         self.prob = prob
 
     def __call__(self, image, label):
-        if np.random.rand() < self.prob:
+        if random.random() < self.prob:
             image = image.transpose(Image.FLIP_LEFT_RIGHT)
             label = label.transpose(Image.FLIP_LEFT_RIGHT)
         return image, label
