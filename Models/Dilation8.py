@@ -99,8 +99,9 @@ class Dilation8(nn.Module):
 
         fc = self.fc[0:4]
         for l1, l2 in zip(vgg16.classifier.children(), fc.children()):
-            l2.weight.data = l1.weight.data.view(l2.weight.size())
-            l2.bias.data = l1.bias.data.view(l2.bias.size())
+            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
+                l2.weight.data = l1.weight.data.view(l2.weight.size())
+                l2.bias.data = l1.bias.data.view(l2.bias.size())
 
         for m in self.context.modules():
             if isinstance(m, nn.Conv2d):
