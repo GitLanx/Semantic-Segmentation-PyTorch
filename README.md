@@ -11,8 +11,8 @@ FCN8sAtOnce(original)|-|-|65.4%|
 DeepLab-LargeFov|93.79%|72.67%|61.68%|pad images to 513x513 for evaluation
 DeepLab-LargeFov|91.02%|74.54%|62.58%|use original resolution for evaluation
 DeepLab-LargeFov(original)|-|-|62.25%|
-DeepLab-ASPP<sup>1</sup>|88.76%|71.07%|55.27%|lr=0.001
-[1]train on voc2012, eval on voc2012
+DeepLab-ASPP|93.10|80.13%|61.07%|
+DeepLab-ASPP(original)|-|-|68.96%|
 
 ### CamVid
 model|acc|acc_cls|mean_iu|notes
