@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 
 class Dilation8(nn.Module):
@@ -98,9 +99,8 @@ class Dilation8(nn.Module):
 
         fc = self.fc[0:4]
         for l1, l2 in zip(vgg16.classifier.children(), fc.children()):
-            if isinstance(l1, nn.Linear) and isinstance(l2, nn.Conv2d):
-                l2.weight.data = l1.weight.data.view(l2.weight.size())
-                l2.bias.data = l1.bias.data.view(l2.bias.size())
+            l2.weight.data = l1.weight.data.view(l2.weight.size())
+            l2.bias.data = l1.bias.data.view(l2.bias.size())
 
         for m in self.context.modules():
             if isinstance(m, nn.Conv2d):
@@ -108,8 +108,10 @@ class Dilation8(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
+        _, _, h, w = x.size()
         out = self.features1(x)
         out = self.features2(out)
         out = self.fc(out)
         out = self.context(out)
+        out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
