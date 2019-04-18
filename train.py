@@ -21,17 +21,17 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--model', type=str, default='deeplab-largefov', help='model to train for')
-    parser.add_argument('--epochs', type=int, default=30, help='total epochs')
+    parser.add_argument('--epochs', type=int, default=50, help='total epochs')
     parser.add_argument('--val_epoch', type=int, default=10, help='validation interval')
     parser.add_argument('--batch_size', type=int, default=16, help='number of batch size')
     parser.add_argument('--img_size', type=tuple, default=None, help='resize images to proper size')
-    parser.add_argument('--dataset_type', type=str, default='sbd', help='choose which dataset to use')
-    parser.add_argument('--dataset_root', type=str, default=r'E:\dataset\PASCAL VOC\benchmark_RELEASE', help='path to dataset')
+    parser.add_argument('--dataset_type', type=str, default='voc', help='choose which dataset to use')
+    parser.add_argument('--dataset_root', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOC_Aug', help='path to dataset')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
     parser.add_argument('--resume', default=None, help='path to checkpoint')
     parser.add_argument('--optim', type=str, default='sgd', help='optimizer')
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-    parser.add_argument('--lr_policy', type=str, default='step', help='learning rate policy')
+    parser.add_argument('--lr_policy', type=str, default='poly', help='learning rate policy')
     parser.add_argument('--weight-decay', type=float, default=0.0005, help='weight decay')
     parser.add_argument('--beta1', type=float, default=0.9, help='momentum for sgd, beta1 for adam')
     parser.add_argument('--lr_decay_step', type=float, default=10, help='step size for step learning policy')
@@ -66,11 +66,11 @@ def main():
     augmentations = get_augmentations(args)
 
     train_loader = DataLoader(
-        loader(root, n_classes=args.n_classes, split='train', img_size=args.img_size, augmentations=augmentations,
+        loader(root, n_classes=args.n_classes, split='train_aug', img_size=args.img_size, augmentations=augmentations,
                pretrained=args.pretrained),
         batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(
-        loader(root, n_classes=args.n_classes, split='val', img_size=args.img_size, pretrained=args.pretrained),
+        loader(root, n_classes=args.n_classes, split='val_id', img_size=args.img_size, pretrained=args.pretrained),
         batch_size=1, shuffle=False, num_workers=4)
 
     # 2. model

@@ -9,16 +9,18 @@ import tqdm
 import Models
 from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter
 from Dataloader import get_loader
+from augmentations import RandomCrop, Compose
 
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--model', type=str, default='fcn8s')
-    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/fcn8s_20190412_212253/model_best.pth.tar',help='Model path')
-    parser.add_argument('--dataset_type', type=str, default='voc11',help='type of dataset')
+    parser.add_argument('--model', type=str, default='deeplab-largefov')
+    parser.add_argument('--model_file', type=str, default='/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/deeplab-largefov_20190417_230357/model_best.pth.tar',help='Model path')
+    parser.add_argument('--dataset_type', type=str, default='voc',help='type of dataset')
     parser.add_argument('--dataset', type=str, default='/home/ecust/Datasets/PASCAL VOC/VOCdevkit/VOC2012',help='path to dataset')
-    parser.add_argument('--img_size', type=tuple, default=None, help='resize images')
+    parser.add_argument('--img_size', type=tuple, default=None, help='resize images using bilinear interpolation')
+    parser.add_argument('--crop_size', type=tuple, default=None, help='crop images')
     parser.add_argument('--n_classes', type=int, default=21, help='number of classes')
     parser.add_argument('--pretrained', type=bool, default=True, help='should be set the same as train.py')
     args = parser.parse_args()
@@ -27,9 +29,11 @@ def main():
     root = args.dataset
     n_classes = args.n_classes
 
+    crop=None
+    # crop = Compose([RandomCrop(args.crop_size)])
     loader = get_loader(args.dataset_type)
     val_loader = DataLoader(
-        loader(root, n_classes=n_classes, split='val', img_size=args.img_size, pretrained=args.pretrained),
+        loader(root, n_classes=n_classes, split='val', img_size=args.img_size, augmentations=crop, pretrained=args.pretrained),
         batch_size=1, shuffle=False, num_workers=4)
 
     model, _, _ = Models.model_loader(args.model, n_classes, resume=None)
