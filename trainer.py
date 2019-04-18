@@ -85,6 +85,7 @@ class Trainer:
 
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while training')
+
             loss.backward()
             self.optim.step()
 
@@ -103,7 +104,7 @@ class Trainer:
                 metrics + [''] * 5 + [elapsed_time]
             log = map(str, log)
             f.write(','.join(log) + '\n')
-        
+
         if self.scheduler:
             self.scheduler.step()
         train_loss_meter.reset()
@@ -187,5 +188,5 @@ class Trainer:
                                  desc='Train', ncols=80):
             self.epoch = epoch
             self.train_epoch()
-        
+
         learning_curve(osp.join(self.out, 'log.csv'))
