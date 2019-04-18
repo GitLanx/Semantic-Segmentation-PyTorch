@@ -1,18 +1,19 @@
 from .FCN import FCN32s, FCN8sAtOnce
 from .UNet import UNet
 from .SegNet import SegNet
-from .DeepLab_v1 import DeepLabLargeFOV, DeepLabMScLargeFOV
+from .DeepLab_v1 import DeepLabLargeFOV
 from .DeepLab_v2 import DeepLabASPP
 from .DeepLab_v3 import DeepLabV3
 from .DeepLab_v3plus import DeepLabV3Plus
 from .Dilation8 import Dilation8
 from .PSPNet import PSPNet
 import torch
-from torchvision import models
 
-VALID_MODEL = ['fcn32s', 'fcn8s', 'unet', 'segnet', 'deeplab-largefov',
-               'deeplab-msclargefov', 'deeplab-aspp', 'deeplab-v3', 'deeplab-v3+',
-               'dilation8', 'pspnet']
+VALID_MODEL = [
+    'fcn32s', 'fcn8s', 'unet', 'segnet', 'deeplab-largefov', 'deeplab-aspp',
+    'deeplab-v3', 'deeplab-v3+', 'dilation8', 'pspnet'
+]
+
 
 def model_loader(model_name, n_classes, resume):
     model_name = model_name.lower()
@@ -26,8 +27,6 @@ def model_loader(model_name, n_classes, resume):
         model = SegNet(n_classes=n_classes)
     elif model_name == 'deeplab-largefov':
         model = DeepLabLargeFOV(n_classes=n_classes)
-    elif model_name == 'deeplab-msclargefov':
-        model = DeepLabMScLargeFOV(n_classes=n_classes)
     elif model_name == 'deeplab-aspp':
         model = DeepLabASPP(n_classes=n_classes)
     elif model_name == 'deeplab-v3':
@@ -40,7 +39,8 @@ def model_loader(model_name, n_classes, resume):
         model = PSPNet(n_classes=n_classes)
     else:
         raise ValueError('Unsupported model, '
-                         'valid models as follows:\n{}'.format(', '.join(VALID_MODEL)))
+                         'valid models as follows:\n{}'.format(
+                             ', '.join(VALID_MODEL)))
 
     start_epoch = 1
     if resume:
@@ -48,9 +48,6 @@ def model_loader(model_name, n_classes, resume):
         model.load_state_dict(checkpoint['model_state_dict'])
         start_epoch = checkpoint['epoch']
     else:
-    #     if model_name in ['fcn8s']:
-    #         vgg16 = models.vgg16(pretrained=True)
-    #         model.copy_params_from_vgg16(vgg16)
         checkpoint = None
 
     return model, start_epoch, checkpoint
