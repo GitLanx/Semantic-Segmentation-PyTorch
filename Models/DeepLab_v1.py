@@ -210,6 +210,56 @@ class DeepLabMScLargeFOV(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
+        # deeplablargefov_path = '/home/ecust/lx/Semantic-Segmentation-PyTorch/logs/deeplab-largefov_20190416_055924/model_best.pth.tar'
+        # assert deeplablargefov_path is not None, ('If you are training DeepLab-MScLargeFov,'
+        #     'Please specify the trained DeepLab-LargeFov\'s model path'
+        #     'in DeepLab_v1.py/DeepLabMScLargeFOV/_initialize_weights')
+
+        # checkpoint = torch.load(deeplablargefov_path)
+        # trained_weights = checkpoint['model_state_dict']
+        # trained_list = list(trained_weights.keys())
+
+        # self_weights = self.features1.state_dict().copy()
+        # self_list = list(self.features1.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[:4][i]]
+        # self.features1.load_state_dict(self_weights)
+
+        # self_weights = self.features2.state_dict().copy()
+        # self_list = list(self.features2.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[4:8][i]]
+        # self.features2.load_state_dict(self_weights)
+
+        # self_weights = self.features3.state_dict().copy()
+        # self_list = list(self.features3.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[8:14][i]]
+        # self.features3.load_state_dict(self_weights)
+
+        # self_weights = self.features4.state_dict().copy()
+        # self_list = list(self.features4.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[14:20][i]]
+        # self.features4.load_state_dict(self_weights)
+
+        # self_weights = self.features5.state_dict().copy()
+        # self_list = list(self.features5.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[20:26][i]]
+        # self.features5.load_state_dict(self_weights)
+
+        # self_weights = self.fc.state_dict().copy()
+        # self_list = list(self.fc.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[26:30][i]]
+        # self.fc.load_state_dict(self_weights)
+
+        # self_weights = self.score.state_dict().copy()
+        # self_list = list(self.score.state_dict().keys())
+        # for i in range(len(self_list)):
+        #     self_weights[self_list[i]] = trained_weights[trained_list[30:][i]]
+        # self.score.load_state_dict(self_weights)
 
         vgg16 = torchvision.models.vgg16(pretrained=True)
         vgg_features = [
@@ -241,7 +291,7 @@ class DeepLabMScLargeFOV(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
         for m in [self.MSc1_score, self.MSc2_score, self.MSc3_score,
-                  self.MSc4_score, self.MSc5_score, self.score]:
+                  self.MSc4_score, self.MSc5_score]:
             nn.init.normal_(m.weight, std=0.01)
             nn.init.constant_(m.bias, 0)
 
@@ -285,10 +335,9 @@ class DeepLabMScLargeFOV(nn.Module):
             else:
                 yield self.score.weight
         else:
-            for module in [self.features1, self.features2, self.features3, self.features4,
-                           self.features5, self.MSc1, self.MSc2, self.MSc3, self.MSc4, self.MSc5,
+            for module in [self.MSc1, self.MSc2, self.MSc3, self.MSc4, self.MSc5,
                            self.MSc1_score, self.MSc2_score, self.MSc3_score, self.MSc4_score,
-                           self.MSc5_score, self.fc]:
+                           self.MSc5_score]:
                 for m in module.modules():
                     if isinstance(m, nn.Conv2d):
                         if bias:
@@ -299,7 +348,7 @@ class DeepLabMScLargeFOV(nn.Module):
 if __name__ == "__main__":
     import torch
     import time
-    model = DeepLabLargeFOV(21)
+    model = DeepLabMScLargeFOV(21)
     print(f'==> Testing {model.__class__.__name__} with PyTorch')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # torch.backends.cudnn.benchmark = True
@@ -307,7 +356,7 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
 
-    x = torch.Tensor(1, 3, 500, 500)
+    x = torch.Tensor(1, 3, 321, 321)
     x = x.to(device)
 
     torch.cuda.synchronize()
