@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--lr_decay_step', type=float, default=10, help='step size for step learning policy')
     parser.add_argument('--lr_power', type=int, default=0.9, help='power parameter for poly learning policy')
     parser.add_argument('--pretrained', type=bool, default=True, help='whether to use pretrained models')
+    parser.add_argument('--iter_size', type=int, default=10, help='iters to accumulate gradients')
 
     parser.add_argument('--crop_size', type=tuple, default=(321, 321), help='crop sizes of images')
     parser.add_argument('--flip', type=bool, default=True, help='whether to use horizontal flip')
@@ -96,6 +97,7 @@ def main():
         epochs=args.epochs,
         n_classes=args.n_classes,
         val_epoch=args.val_epoch,
+        iter_size=args.iter_size
     )
     trainer.epoch = start_epoch
     trainer.train()
