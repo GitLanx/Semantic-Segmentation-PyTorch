@@ -2,18 +2,19 @@ import datetime
 import os
 import os.path as osp
 import shutil
-from utils import visualize_segmentation, get_tile_image, runningScore, averageMeter, learning_curve
 import numpy as np
 import pytz
 import scipy.misc
 import torch
-import torch.nn.functional as F
 import tqdm
+from loss import CrossEntropyLoss
+from utils import visualize_segmentation, get_tile_image, learning_curve
+from metrics import runningScore, averageMeter, get_multiscale_results
 
 
 class Trainer:
-    def __init__(self, device, model, optimizer, scheduler, train_loader, val_loader,
-                 out, epochs, n_classes, val_epoch=None):
+    def __init__(self, device, model, optimizer, scheduler, train_loader,
+                 val_loader, out, epochs, n_classes, val_epoch=10, iter_size=1):
         self.device = device
 
         self.model = model
@@ -26,6 +27,7 @@ class Trainer:
             datetime.datetime.now(pytz.timezone('UTC'))
 
         self.val_epoch = val_epoch
+        self.iter_size = iter_size
 
         self.out = out
         if not osp.exists(self.out):
@@ -57,12 +59,14 @@ class Trainer:
     def train_epoch(self):
         if self.epoch % self.val_epoch == 0 or self.epoch == 1:
             self.validate()
-            # lr = self.optim.param_groups[0]['lr']
-            # print(f'learning rate = {lr:.7f}')
+            lr = self.optim.param_groups[0]['lr']
+            print(f'learning rate = {lr:.7f}')
 
         self.model.train()
         train_metrics = runningScore(self.n_classes)
         train_loss_meter = averageMeter()
+
+        self.optim.zero_grad()
 
         for data, target in tqdm.tqdm(
                 self.train_loader, total=len(self.train_loader),
@@ -71,26 +75,28 @@ class Trainer:
             assert self.model.training
 
             data, target = data.to(self.device), target.to(self.device)
-            self.optim.zero_grad()
             score = self.model(data)
 
             weight = self.train_loader.dataset.class_weight
             if weight:
                 weight = torch.Tensor(weight).to(self.device)
 
-            loss = F.cross_entropy(score, target, weight=weight, reduction='mean', ignore_index=-1)
-            # loss /= len(data)
+            loss = CrossEntropyLoss(score, target, weight=weight, ignore_index=-1, reduction='mean')
+
             loss_data = loss.data.item()
             train_loss_meter.update(loss_data)
 
             if np.isnan(loss_data):
                 raise ValueError('loss is nan while training')
 
+            loss /= self.iter_size
             loss.backward()
-            self.optim.step()
 
-            lbl_pred = score.data.max(1)[1].cpu().numpy()
-            lbl_true = target.data.cpu().numpy()
+            if self.iter % self.iter_size == 0:
+                self.optim.step()
+                self.optim.zero_grad()
+
+            lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
             train_metrics.update(lbl_true, lbl_pred)
 
         acc, acc_cls, mean_iou, fwavacc, _ = train_metrics.get_scores()
@@ -123,10 +129,9 @@ class Trainer:
                     desc=f'Valid epoch={self.epoch}', ncols=80, leave=False):
 
                 data, target = data.to(self.device), target.to(self.device)
-
                 score = self.model(data)
 
-                loss = F.cross_entropy(score, target, reduction='mean', ignore_index=-1)
+                loss = CrossEntropyLoss(score, target, reduction='mean', ignore_index=-1)
                 loss_data = loss.data.item()
                 if np.isnan(loss_data):
                     raise ValueError('loss is nan while validating')
@@ -134,8 +139,9 @@ class Trainer:
                 val_loss_meter.update(loss_data)
 
                 imgs = data.data.cpu()
-                lbl_pred = score.data.max(1)[1].cpu().numpy()
-                lbl_true = target.data.cpu()
+                lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
+                # lbl_pred = score.data.max(1)[1].cpu().numpy()
+                # lbl_true = target.data.cpu()
                 for img, lt, lp in zip(imgs, lbl_true, lbl_pred):
                     img, lt = self.val_loader.dataset.untransform(img, lt)
                     val_metrics.update(lt, lp)
@@ -184,6 +190,7 @@ class Trainer:
         val_metrics.reset()
 
     def train(self):
+        self.iter = 0
         for epoch in tqdm.trange(self.epoch, self.epochs + 1,
                                  desc='Train', ncols=80):
             self.epoch = epoch
