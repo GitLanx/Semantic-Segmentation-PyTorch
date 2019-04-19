@@ -72,6 +72,7 @@ class Trainer:
                 self.train_loader, total=len(self.train_loader),
                 desc=f'Train epoch={self.epoch}', ncols=80, leave=False):
 
+            self.iter += 1
             assert self.model.training
 
             data, target = data.to(self.device), target.to(self.device)
