@@ -1,10 +1,6 @@
 import math
 import numpy as np
-import scipy.ndimage
-from PIL import Image
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')  # NOQA
 import pandas
 import seaborn
 import skimage
@@ -12,104 +8,12 @@ import skimage.color
 import skimage.transform
 from torch.optim import lr_scheduler
 
-
 # Adapted from https://github.com/wkentaro/fcn/blob/master/fcn/utils.py
-
-# -----------------------------------------------------------------------------
-# Color Util
-# -----------------------------------------------------------------------------
-
-def getpalette(n_classes):
-    n = n_classes
-    palette = [0]*(n*3)
-    for j in range(0, n):
-        lab = j
-        palette[j*3+0] = 0
-        palette[j*3+1] = 0
-        palette[j*3+2] = 0
-        i = 0
-        while (lab > 0):
-            palette[j*3+0] |= (((lab >> 0) & 1) << (7-i))
-            palette[j*3+1] |= (((lab >> 1) & 1) << (7-i))
-            palette[j*3+2] |= (((lab >> 2) & 1) << (7-i))
-            i = i + 1
-            lab >>= 3
-    return palette
-
-def visualize_label_colormap(cmap):
-    n_colors = len(cmap)
-    ret = np.zeros((n_colors, 10 * 10, 3))
-    for i in range(n_colors):
-        ret[i, ...] = cmap[i]
-    return ret.reshape((n_colors * 10, 10, 3))
-
-# -----------------------------------------------------------------------------
-# Evaluation
-# -----------------------------------------------------------------------------
-
-# Adapted from:
-# https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/metrics.py
-
-class runningScore(object):
-    def __init__(self, n_classes):
-        self.n_classes = n_classes
-        self.confusion_matrix = np.zeros((n_classes, n_classes))
-
-    def _fast_hist(self, label_true, label_pred, n_class):
-        mask = (label_true >= 0) & (label_true < n_class)
-        hist = np.bincount(
-            n_class * label_true[mask].astype(int) + label_pred[mask], minlength=n_class ** 2
-        ).reshape(n_class, n_class)
-        return hist
-
-    def update(self, label_trues, label_preds):
-        for lt, lp in zip(label_trues, label_preds):
-            self.confusion_matrix += self._fast_hist(lt.flatten(), lp.flatten(), self.n_classes)
-
-    def get_scores(self):
-        """Returns accuracy score evaluation result.
-            - overall accuracy
-            - mean accuracy
-            - mean IU
-            - fwavacc
-        """
-        hist = self.confusion_matrix
-        acc = np.diag(hist).sum() / hist.sum()
-        acc_cls = np.diag(hist) / hist.sum(axis=1)
-        acc_cls = np.nanmean(acc_cls)
-        iu = np.diag(hist) / (hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist))
-        mean_iu = np.nanmean(iu)
-        freq = hist.sum(axis=1) / hist.sum()
-        fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
-        cls_iu = dict(zip(range(self.n_classes), iu))
-
-        return acc, acc_cls, mean_iu, fwavacc, cls_iu
-
-    def reset(self):
-        self.confusion_matrix = np.zeros((self.n_classes, self.n_classes))
-
-
-class averageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
 
 # -----------------------------------------------------------------------------
 # Visualization
 # -----------------------------------------------------------------------------
+
 
 def centerize(src, dst_shape, margin_color=None):
     """Centerize image for specified image size
@@ -128,8 +32,8 @@ def centerize(src, dst_shape, margin_color=None):
         pad_vertical = (dst_h - h) // 2
     if w < dst_w:
         pad_horizontal = (dst_w - w) // 2
-    centerized[pad_vertical:pad_vertical + h,
-               pad_horizontal:pad_horizontal + w] = src
+    centerized[pad_vertical:pad_vertical + h, pad_horizontal:pad_horizontal +
+               w] = src
     return centerized
 
 
@@ -160,17 +64,18 @@ def _tile_images(imgs, tile_shape, concatenated_image):
             if i >= len(imgs):
                 pass
             else:
-                concatenated_image[y * one_height:(y + 1) * one_height,
-                                   x * one_width:(x + 1) * one_width] = imgs[i]
+                concatenated_image[y * one_height:(y + 1) * one_height, x *
+                                   one_width:(x + 1) * one_width] = imgs[i]
     return concatenated_image
 
 
 def get_tile_image(imgs, tile_shape=None, result_img=None, margin_color=None):
-    """Concatenate images whose sizes are different.  
-    @param imgs: image list which should be concatenated  
-    @param tile_shape: shape for which images should be concatenated  
+    """Concatenate images whose sizes are different.
+    @param imgs: image list which should be concatenated
+    @param tile_shape: shape for which images should be concatenated
     @param result_img: numpy array to put result image
     """
+
     def resize(*args, **kwargs):
         return skimage.transform.resize(*args, **kwargs)
 
@@ -233,6 +138,7 @@ def label2rgb(lbl, dataloader, img=None, n_labels=None, alpha=0.5):
 
     return lbl_viz
 
+
 def visualize_segmentation(**kwargs):
     """Visualize segmentation.
     Parameters
@@ -259,8 +165,8 @@ def visualize_segmentation(**kwargs):
     n_class = kwargs.pop('n_classes', None)
     dataloader = kwargs.pop('dataloader', None)
     if kwargs:
-        raise RuntimeError(
-            'Unexpected keys in kwargs: {}'.format(kwargs.keys()))
+        raise RuntimeError('Unexpected keys in kwargs: {}'.format(
+            kwargs.keys()))
 
     if lbl_true is None and lbl_pred is None:
         raise ValueError('lbl_true or lbl_pred must be not None.')
@@ -270,9 +176,8 @@ def visualize_segmentation(**kwargs):
     if lbl_true is not None:
         mask_unlabeled = lbl_true == -1
         # lbl_true[mask_unlabeled] = 0
-        viz_unlabeled = (
-            np.zeros((lbl_true.shape[0], lbl_true.shape[1], 3))
-        ).astype(np.uint8)
+        viz_unlabeled = (np.zeros((lbl_true.shape[0], lbl_true.shape[1],
+                                   3))).astype(np.uint8)
         # if lbl_pred is not None:
         #     lbl_pred[mask_unlabeled] = 0
 
@@ -306,11 +211,13 @@ def visualize_segmentation(**kwargs):
     else:
         raise RuntimeError
 
+
 # -----------------------------------------------------------------------------
 # Utilities
 # -----------------------------------------------------------------------------
 
 # Adapted from official CycleGAN implementation
+
 
 def get_scheduler(optimizer, opt):
     """Return a learning rate scheduler
@@ -324,29 +231,39 @@ def get_scheduler(optimizer, opt):
     See https://pytorch.org/docs/stable/optim.html for more details.
     """
     if opt.lr_policy == 'linear':
+
         def lambda_rule(epoch):
-            lr = 1.0 - max(0, epoch + 1 - opt.epochs) / float(opt.niter_decay + 1)
+            lr = 1.0 - max(0,
+                           epoch + 1 - opt.epochs) / float(opt.niter_decay + 1)
             return lr
+
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif opt.lr_policy == 'poly':
+
         def lambda_rule(epoch):
-            lr = (1 - epoch / opt.epochs) ** opt.lr_power
+            lr = (1 - epoch / opt.epochs)**opt.lr_power
             return lr
+
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     elif opt.lr_policy == 'step':
-        scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.lr_decay_step, gamma=0.1)
+        scheduler = lr_scheduler.StepLR(
+            optimizer, step_size=opt.lr_decay_step, gamma=0.1)
     elif opt.lr_policy == 'plateau':
-        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=1e-4, patience=5)
+        scheduler = lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.2, threshold=1e-4, patience=5)
     elif opt.lr_policy == 'cosine':
         scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs)
     elif opt.lr_policy is None:
         scheduler = None
     else:
-        return NotImplementedError(f'learning rate policy {opt.lr_policy} is not implemented')
+        return NotImplementedError(
+            f'learning rate policy {opt.lr_policy} is not implemented')
     return scheduler
+
 
 # Adapted from:
 # https://github.com/wkentaro/pytorch-fcn/blob/master/examples/voc/learning_curve.py
+
 
 def learning_curve(log_file):
     print(f'==> Plotting log file: {log_file}')
@@ -399,11 +316,17 @@ def learning_curve(log_file):
         # loss
         plt.subplot(n_row, n_col, i * n_col + 1)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        plt.plot(df_split['epoch'], df_split[f'{split}/loss'], '-',
-                 markersize=1, color=colors[0], alpha=.5,
-                 label=f'{split} loss')
+        plt.plot(
+            df_split['epoch'],
+            df_split[f'{split}/loss'],
+            '-',
+            markersize=1,
+            color=colors[0],
+            alpha=.5,
+            label=f'{split} loss')
         plt.xlim((1, row_max['epoch']))
-        plt.ylim(min(df_split[f'{split}/loss']), max(df_split[f'{split}/loss']))
+        plt.ylim(
+            min(df_split[f'{split}/loss']), max(df_split[f'{split}/loss']))
         plt.xlabel('epoch')
         plt.ylabel(f'{split} loss')
 
@@ -421,18 +344,38 @@ def learning_curve(log_file):
         # lbl accuracy
         plt.subplot(n_row, n_col, i * n_col + 2)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        plt.plot(df_split['epoch'], df_split[f'{split}/acc'],
-                 '-', markersize=1, color=colors[1], alpha=.5,
-                 label=f'{split} accuracy')
-        plt.plot(df_split['epoch'], df_split[f'{split}/acc_cls'],
-                 '-', markersize=1, color=colors[2], alpha=.5,
-                 label=f'{split} accuracy class')
-        plt.plot(df_split['epoch'], df_split[f'{split}/mean_iu'],
-                 '-', markersize=1, color=colors[3], alpha=.5,
-                 label=f'{split} mean IU')
-        plt.plot(df_split['epoch'], df_split[f'{split}/fwavacc'],
-                 '-', markersize=1, color=colors[4], alpha=.5,
-                 label=f'{split} fwav accuracy')
+        plt.plot(
+            df_split['epoch'],
+            df_split[f'{split}/acc'],
+            '-',
+            markersize=1,
+            color=colors[1],
+            alpha=.5,
+            label=f'{split} accuracy')
+        plt.plot(
+            df_split['epoch'],
+            df_split[f'{split}/acc_cls'],
+            '-',
+            markersize=1,
+            color=colors[2],
+            alpha=.5,
+            label=f'{split} accuracy class')
+        plt.plot(
+            df_split['epoch'],
+            df_split[f'{split}/mean_iu'],
+            '-',
+            markersize=1,
+            color=colors[3],
+            alpha=.5,
+            label=f'{split} mean IU')
+        plt.plot(
+            df_split['epoch'],
+            df_split[f'{split}/fwavacc'],
+            '-',
+            markersize=1,
+            color=colors[4],
+            alpha=.5,
+            label=f'{split} fwav accuracy')
         plt.legend()
         plt.xlim((1, row_max['epoch']))
         plt.ylim((0, 1))
