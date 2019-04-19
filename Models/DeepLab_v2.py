@@ -163,18 +163,17 @@ class DeepLabASPP(nn.Module):
         x3 = self.aspp(self.resnet(x3))
 
         out = []
-        x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=True)
         out.append(x)
 
-        x2 = F.interpolate(x2, size=(h, w), mode='bilinear', align_corners=True)
+        x2 = F.interpolate(x2, size=x.size()[2:], mode='bilinear', align_corners=True)
         out.append(x2)
 
-        x3 = F.interpolate(x3, size=(h, w), mode='bilinear', align_corners=True)
+        x3 = F.interpolate(x3, size=x.size()[2:], mode='bilinear', align_corners=True)
         out.append(x3)
 
         out.append(torch.max(torch.max(x, x2), x3))
         return out
-    
+
     def get_parameters(self, bias=False, score=False):
         if score:
             for m in self.aspp.modules():
@@ -186,12 +185,12 @@ class DeepLabASPP(nn.Module):
             for m in self.resnet.modules():
                 for p in m.parameters():
                     if p.requires_grad:
-                        yield k
+                        yield p
+
 
 class ASPP(nn.Module):
     def __init__(self, in_channels, atrous_rates, n_classes):
         super(ASPP, self).__init__()
-        out_channels = n_classes
 
         rate1, rate2, rate3, rate4 = atrous_rates
         self.conv1 = nn.Conv2d(2048, n_classes, kernel_size=3, padding=rate1, dilation=rate1, bias=True)
