@@ -16,7 +16,6 @@ class Compose:
 
 class RandomFlip:
     def __init__(self, prob=0.5):
-        super(RandomFlip, self).__init__()
         self.prob = prob
 
     def __call__(self, image, label):
@@ -28,7 +27,6 @@ class RandomFlip:
 
 class RandomCrop:
     def __init__(self, crop_size):
-        super(RandomCrop, self).__init__()
         self.crop_size = crop_size
 
     @staticmethod
@@ -57,12 +55,28 @@ class RandomCrop:
         return image, label
 
 
+class RandomResize:
+    def __init__(self, scale_size):
+        self.scale_size = scale_size
+
+    def __call__(self, image, label):
+        w, h = image.size
+        scale = random.uniform(self.scale_size[0], self.scale_size[1])
+        ow, oh = int(w * scale), int(h * scale)
+        image = image.resize((ow, oh), Image.BILINEAR)
+        label = label.resize((ow, oh), Image.NEAREST)
+
+        return image, label
+
+
 def get_augmentations(args):
     augs = []
     if args.flip:
         augs.append(RandomFlip())
     if args.crop_size:
         augs.append(RandomCrop(args.crop_size))
+    if args.scale_size:
+        augs.append(RandomResize(args.scale_size))
 
     if augs == []:
         return None
