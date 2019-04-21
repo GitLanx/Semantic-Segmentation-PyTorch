@@ -4,13 +4,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class DeepLabASPP_vgg(nn.Module):
+class DeepLabASPPVGG(nn.Module):
     """Adapted from official implementation:
 
     http://liangchiehchen.com/projects/DeepLabv2_vgg.html
     """
     def __init__(self, n_classes):
-        super(DeepLabASPP, self).__init__()
+        super(DeepLabASPPVGG, self).__init__()
 
         features = []
         features.append(nn.Conv2d(3, 64, 3, padding=1))
@@ -101,12 +101,12 @@ class DeepLabASPP_vgg(nn.Module):
             nn.init.normal_(m.weight, std=0.01)
             nn.init.constant_(m.bias, 0)
 
-        for module in [self.fc1, self.fc2, self.fc3, self.fc4]:
-            for m in module:
-                if isinstance(m, nn.Conv2d):
+        # for module in [self.fc1, self.fc2, self.fc3, self.fc4]:
+        #     for m in module:
+        #         if isinstance(m, nn.Conv2d):
                     # nn.init.kaiming_normal_(m.weight)
-                    nn.init.normal_(m.weight, std=0.01)
-                    nn.init.constant_(m.bias, 0)
+                    # nn.init.normal_(m.weight, std=0.01)
+                    # nn.init.constant_(m.bias, 0)
 
         vgg = torchvision.models.vgg16(pretrained=True)
         state_dict = vgg.features.state_dict()
@@ -146,9 +146,9 @@ def freeze_bn(m):
             p.requires_grad = False
 
 
-class DeepLabASPP(nn.Module):
+class DeepLabASPPResNet(nn.Module):
     def __init__(self, n_classes):
-        super(DeepLabASPP, self).__init__()
+        super(DeepLabASPPResNet, self).__init__()
         self.resnet = ResNet(Bottleneck, [3, 4, 23, 3])
         self.atrous_rates = [6, 12, 18, 24]
         self.aspp = ASPP(2048, self.atrous_rates, n_classes)     
@@ -163,12 +163,13 @@ class DeepLabASPP(nn.Module):
         x3 = self.aspp(self.resnet(x3))
 
         out = []
+        x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=True)
         out.append(x)
 
-        x2 = F.interpolate(x2, size=x.size()[2:], mode='bilinear', align_corners=True)
+        x2 = F.interpolate(x2, size=(h, w), mode='bilinear', align_corners=True)
         out.append(x2)
 
-        x3 = F.interpolate(x3, size=x.size()[2:], mode='bilinear', align_corners=True)
+        x3 = F.interpolate(x3, size=(h, w), mode='bilinear', align_corners=True)
         out.append(x3)
 
         out.append(torch.max(torch.max(x, x2), x3))
@@ -268,8 +269,6 @@ class ResNet(nn.Module):
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
-        # for i in self.bn1.parameters():
-        #     i.requires_grad = False
 
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -296,8 +295,6 @@ class ResNet(nn.Module):
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion))
-        # for i in downsample._modules['1'].parameters():
-        #     i.requires_grad = False
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, dilation=dilation, downsample=downsample))
