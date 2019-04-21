@@ -6,9 +6,9 @@ def get_optimizer(args, model):
     if args.optim.lower() == 'sgd':
         if args.model.lower() in ['fcn32s', 'fcn8s']:
             optim = fcn_optim(model, args)
-        elif args.model.lower() in ['deeplab-largefov', 'deeplab-msclargefov']:
+        elif args.model.lower() in ['deeplab-largefov', 'deeplab-aspp-vgg']:
             optim = deeplab_optim(model, args)
-        elif args.model.lower() in ['deeplab-aspp']:
+        elif args.model.lower() in ['deeplab-aspp-resnet']:
             optim = deeplabv2_optim(model, args)
         else:
             optim = torch.optim.SGD(
@@ -38,7 +38,7 @@ def fcn_optim(model, args):
     return optim
 
 def deeplab_optim(model, args):
-    """optimizer for deeplab-v1
+    """optimizer for deeplab-v1 and deeplab-v2-vgg
     """
     optim = torch.optim.SGD(
         [{'params': model.get_parameters(bias=False, score=False)},
@@ -51,7 +51,7 @@ def deeplab_optim(model, args):
     return optim
 
 def deeplabv2_optim(model, args):
-    """optimizer for deeplab-v2
+    """optimizer for deeplab-v2-resnet
     """
     optim = torch.optim.SGD(
         [{'params': model.get_parameters(bias=False, score=False)},
