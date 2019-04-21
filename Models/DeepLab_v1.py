@@ -89,7 +89,7 @@ class DeepLabLargeFOV(nn.Module):
         out = self.features(x)
         out = self.fc(out)
         out = self.score(out)
-        # out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
+        out = F.interpolate(out, (h, w), mode='bilinear', align_corners=True)
         return out
 
     def get_parameters(self, bias=False, score=False):
