@@ -55,13 +55,13 @@ class RandomCrop:
         return image, label
 
 
-class RandomResize:
-    def __init__(self, scale_size):
-        self.scale_size = scale_size
+class RandomScale:
+    def __init__(self, scale_range):
+        self.scale = scale_range
 
     def __call__(self, image, label):
         w, h = image.size
-        scale = random.uniform(self.scale_size[0], self.scale_size[1])
+        scale = random.uniform(self.scale[0], self.scale[1])
         ow, oh = int(w * scale), int(h * scale)
         image = image.resize((ow, oh), Image.BILINEAR)
         label = label.resize((ow, oh), Image.NEAREST)
@@ -75,8 +75,8 @@ def get_augmentations(args):
         augs.append(RandomFlip())
     if args.crop_size:
         augs.append(RandomCrop(args.crop_size))
-    if args.scale_size:
-        augs.append(RandomResize(args.scale_size))
+    if args.scale_range:
+        augs.append(RandomScale(args.scale_size))
 
     if augs == []:
         return None
