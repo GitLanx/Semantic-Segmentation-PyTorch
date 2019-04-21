@@ -5,7 +5,7 @@ import torch
 
 
 def CrossEntropyLoss(score, target, weight, ignore_index, reduction):
-    if not isinstance(score, list):
+    if not isinstance(score, tuple):
         loss = F.cross_entropy(
             score, target, weight=weight, ignore_index=ignore_index, reduction=reduction)
         return loss
