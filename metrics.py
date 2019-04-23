@@ -65,17 +65,3 @@ class averageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-
-def get_multiscale_results(score, target, upsample_logits=False):
-    if upsample_logits:
-        score = F.interpolate(score, size=target.size[2:], mode='bilinear', align_corners=True)
-    else:
-        target = F.interpolate(target, size=score.size[2:], mode='nearest', align_corners=True)
-
-    if not isinstance(score, tuple):
-        lbl_pred = score.data.max(1)[1].cpu().numpy()
-    else:
-        lbl_pred = score[-1].data.max(1)[1].cpu().numpy()
-
-    lbl_true = target.data.cpu().numpy()
-    return lbl_pred, lbl_true
