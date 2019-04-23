@@ -3,6 +3,8 @@ import torch.nn as nn
 
 
 def get_optimizer(args, model):
+    """Optimizer for different models
+    """
     if args.optim.lower() == 'sgd':
         if args.model.lower() in ['fcn32s', 'fcn8s']:
             optim = fcn_optim(model, args)

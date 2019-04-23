@@ -5,6 +5,8 @@ import torch
 
 
 def CrossEntropyLoss(score, target, weight, ignore_index, reduction):
+    """Cross entropy for single or multiple outputs.
+    """
     if not isinstance(score, tuple):
         loss = F.cross_entropy(
             score, target, weight=weight, ignore_index=ignore_index, reduction=reduction)

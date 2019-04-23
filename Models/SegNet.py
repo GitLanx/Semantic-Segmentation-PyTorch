@@ -5,8 +5,7 @@ import torchvision
 
 # use vgg16_bn pretrained model
 class SegNet(nn.Module):
-    """
-    Adapted from official implementation:
+    """Adapted from official implementation:
 
     https://github.com/alexgkendall/SegNet-Tutorial/tree/master/Models
     """

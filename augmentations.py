@@ -15,6 +15,8 @@ class Compose:
 
 
 class RandomFlip:
+    """Flip images horizontally.
+    """
     def __init__(self, prob=0.5):
         self.prob = prob
 
@@ -26,6 +28,13 @@ class RandomFlip:
 
 
 class RandomCrop:
+    """Crop images to given size.
+
+    Parameters
+    ----------
+      crop_size: a tuple specifying crop size,
+                 which can be larger than original size.
+    """
     def __init__(self, crop_size):
         self.crop_size = crop_size
 
@@ -56,6 +65,12 @@ class RandomCrop:
 
 
 class RandomScale:
+    """Scale images within range.
+    
+    Parameters
+    ----------
+      scale_range: a tuple specifying lowest and highest range.
+    """
     def __init__(self, scale_range):
         self.scale = scale_range
 
@@ -70,13 +85,15 @@ class RandomScale:
 
 
 def get_augmentations(args):
+    """Specify augmentation.
+    """
     augs = []
     if args.flip:
         augs.append(RandomFlip())
     if args.crop_size:
         augs.append(RandomCrop(args.crop_size))
     if args.scale_range:
-        augs.append(RandomScale(args.scale_size))
+        augs.append(RandomScale(args.scale_range))
 
     if augs == []:
         return None
