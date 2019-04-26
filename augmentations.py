@@ -52,10 +52,10 @@ class RandomCrop:
     def __call__(self, image, label):
         if image.size[0] < self.crop_size[1]:
             image = ImageOps.expand(image, (self.crop_size[1] - image.size[0], 0), fill=0)
-            label = ImageOps.expand(label, (self.crop_size[1] - label.size[0], 0), fill=0)
+            label = ImageOps.expand(label, (self.crop_size[1] - label.size[0], 0), fill=255)
         if image.size[1] < self.crop_size[0]:
             image = ImageOps.expand(image, (0, self.crop_size[0] - image.size[1]), fill=0)
-            label = ImageOps.expand(label, (0, self.crop_size[0] - label.size[1]), fill=0)
+            label = ImageOps.expand(label, (0, self.crop_size[0] - label.size[1]), fill=255)
 
         i, j, h, w = self.get_params(image, self.crop_size)
         image = image.crop((j, i, j + w, i + h))

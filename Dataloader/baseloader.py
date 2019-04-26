@@ -50,6 +50,7 @@ class BaseLoader(data.Dataset):
     def transform(self, img, lbl):
         img = self.tf(img)
         lbl = np.array(lbl, dtype=np.int32)
+        lbl[lbl == 255] = -1
         if self.ignore_index:
             lbl[lbl == self.ignore_index] = -1
         lbl = torch.from_numpy(lbl).long()
