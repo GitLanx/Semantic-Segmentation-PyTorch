@@ -7,9 +7,10 @@ import pytz
 import scipy.misc
 import torch
 import tqdm
-from loss import CrossEntropyLoss
+from PIL import Image
+from loss import CrossEntropyLoss, resize_labels
 from utils import visualize_segmentation, get_tile_image, learning_curve
-from metrics import runningScore, averageMeter, get_multiscale_results
+from metrics import runningScore, averageMeter
 
 
 class Trainer:
@@ -59,8 +60,6 @@ class Trainer:
     def train_epoch(self):
         if self.epoch % self.val_epoch == 0 or self.epoch == 1:
             self.validate()
-            lr = self.optim.param_groups[0]['lr']
-            print(f'learning rate = {lr:.7f}')
 
         self.model.train()
         train_metrics = runningScore(self.n_classes)
@@ -97,7 +96,19 @@ class Trainer:
                 self.optim.step()
                 self.optim.zero_grad()
 
-            lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
+
+            # if not isinstance(score, tuple):
+            #     lbl_pred = score.data.max(1)[1].cpu().numpy()
+            # else:
+            #     lbl_pred = score[-1].data.max(1)[1].cpu().numpy()
+
+            # lbl_true = target.data.cpu().numpy()
+            # lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
+            if isinstance(score, tuple):
+                lbl_pred = score[-1].data.max(1)[1].cpu().numpy()
+            else:
+                lbl_pred = score.data.max(1)[1].cpu().numpy()
+            lbl_true = target.data.cpu().numpy()
             train_metrics.update(lbl_true, lbl_pred)
 
         acc, acc_cls, mean_iou, fwavacc, _ = train_metrics.get_scores()
@@ -114,6 +125,10 @@ class Trainer:
 
         if self.scheduler:
             self.scheduler.step()
+        if self.epoch % self.val_epoch == 0 or self.epoch == 1:
+            lr = self.optim.param_groups[0]['lr']
+            print(f'\nCurrent base learning rate of epoch {self.epoch}: {lr:.7f}')
+
         train_loss_meter.reset()
         train_metrics.reset()
 
@@ -130,22 +145,39 @@ class Trainer:
                     desc=f'Valid epoch={self.epoch}', ncols=80, leave=False):
 
                 data, target = data.to(self.device), target.to(self.device)
+
                 score = self.model(data)
 
-                loss = CrossEntropyLoss(score, target, reduction='mean', ignore_index=-1)
+                weight = self.val_loader.dataset.class_weight
+                if weight:
+                    weight = torch.Tensor(weight).to(self.device)
+
+                # target = resize_labels(target, (score.size()[2], score.size()[3]))
+                # target = target.to(self.device)
+                loss = CrossEntropyLoss(score, target, weight=weight, reduction='mean', ignore_index=-1)
                 loss_data = loss.data.item()
                 if np.isnan(loss_data):
                     raise ValueError('loss is nan while validating')
 
                 val_loss_meter.update(loss_data)
 
+                # if not isinstance(score, tuple):
+                #     lbl_pred = score.data.max(1)[1].cpu().numpy()
+                # else:
+                #     lbl_pred = score[-1].data.max(1)[1].cpu().numpy()
+
+                # lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
                 imgs = data.data.cpu()
-                lbl_pred, lbl_true = get_multiscale_results(score, target, upsample_logits=False)
-                # lbl_pred = score.data.max(1)[1].cpu().numpy()
-                # lbl_true = target.data.cpu()
+                if isinstance(score, tuple):
+                    lbl_pred = score[-1].data.max(1)[1].cpu().numpy()
+                else:
+                    lbl_pred = score.data.max(1)[1].cpu().numpy()
+                lbl_true = target.data.cpu()
                 for img, lt, lp in zip(imgs, lbl_true, lbl_pred):
                     img, lt = self.val_loader.dataset.untransform(img, lt)
                     val_metrics.update(lt, lp)
+                    # img = Image.fromarray(img).resize((lt.shape[1], lt.shape[0]), Image.BILINEAR)
+                    # img = np.array(img)
                     if len(visualizations) < 9:
                         viz = visualize_segmentation(
                             lbl_pred=lp, lbl_true=lt, img=img,
