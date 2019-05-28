@@ -1,3 +1,4 @@
+import math
 import torchvision
 import torch
 import torch.nn as nn
@@ -102,10 +103,11 @@ class DeepLabASPPVGG(nn.Module):
             nn.init.constant_(m.bias, 0)
 
         # for module in [self.fc1, self.fc2, self.fc3, self.fc4]:
-        #     for m in module:
+        #     for m in self.modules():
         #         if isinstance(m, nn.Conv2d):
-                    # nn.init.kaiming_normal_(m.weight)
-                    # nn.init.normal_(m.weight, std=0.01)
+        #             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        #             nn.init.normal_(m.weight, std=math.sqrt(2. / n))
+                    # nn.init.kaiming_normal_(m.weight, mode='fan_in')
                     # nn.init.constant_(m.bias, 0)
 
         vgg = torchvision.models.vgg16(pretrained=True)
@@ -156,32 +158,29 @@ class DeepLabASPPResNet(nn.Module):
 
     def forward(self, x):
         _, _, h, w = x.size()
-        x2 = F.interpolate(x, size=(int(h * 0.75) + 1, int(h * 0.75) + 1), mode='bilinear', align_corners=True)
-        x3 = F.interpolate(x, size=(int(h * 0.5) + 1, int(h * 0.5) + 1), mode='bilinear', align_corners=True)
+        x2 = F.interpolate(x, size=(int(h * 0.75) + 1, int(w * 0.75) + 1), mode='bilinear', align_corners=True)
+        x3 = F.interpolate(x, size=(int(h * 0.5) + 1, int(w * 0.5) + 1), mode='bilinear', align_corners=True)
         x = self.aspp(self.resnet(x))
         x2 = self.aspp(self.resnet(x2))
         x3 = self.aspp(self.resnet(x3))
 
-        out = []
         x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=True)
-        out.append(x)
 
         x2 = F.interpolate(x2, size=(h, w), mode='bilinear', align_corners=True)
-        out.append(x2)
 
         x3 = F.interpolate(x3, size=(h, w), mode='bilinear', align_corners=True)
-        out.append(x3)
 
-        out.append(torch.max(torch.max(x, x2), x3))
-        return out
+        x4 = torch.max(torch.max(x, x2), x3)
+        return x, x2, x3, x4
 
     def get_parameters(self, bias=False, score=False):
         if score:
             for m in self.aspp.modules():
-                if bias:
-                    yield m.bias
-                else:
-                    yield m.weight
+                if isinstance(m, nn.Conv2d):
+                    if bias:
+                        yield m.bias
+                    else:
+                        yield m.weight
         else:
             for m in self.resnet.modules():
                 for p in m.parameters():
@@ -201,17 +200,19 @@ class ASPP(nn.Module):
 
         self._initialize_weights()
 
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, std=0.01)
-                nn.init.zeros_(m.bias)
+    # def _initialize_weights(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.Conv2d):
+    #             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+    #             m.weight.data.normal_(0, math.sqrt(2. / n))
+    #             nn.init.kaiming_normal_(m.weight, mode='fan_out')
+    #             nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         features1 = self.conv1(x)
-        features2 = self.conv1(x)
-        features3 = self.conv2(x)
-        features4 = self.conv3(x)
+        features2 = self.conv2(x)
+        features3 = self.conv3(x)
+        features4 = self.conv4(x)
         out = features1 + features2 + features3 + features4
 
         return out
@@ -279,7 +280,16 @@ class ResNet(nn.Module):
 
         self._initialize_weights()
 
-    def _initialize_weights(self):
+    # def _initialize_weights(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.Conv2d):
+    #             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+    #             m.weight.data.normal_(0, math.sqrt(2. / n))
+    #             nn.init.kaiming_normal_(m.weight, mode='fan_out')
+    #         elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.GroupNorm):
+    #             m.weight.data.fill_(1)
+    #             m.bias.data.zero_()
+
         resnet = torchvision.models.resnet101(pretrained=True)
         self.conv1.load_state_dict(resnet.conv1.state_dict())
         self.bn1.load_state_dict(resnet.bn1.state_dict())
